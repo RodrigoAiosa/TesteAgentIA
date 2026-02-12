@@ -8,35 +8,37 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
-# --- INJEÇÃO DE CSS REFORÇADO ---
+# --- INJEÇÃO DE CSS (OCULTAÇÃO TOTAL E ESTILO) ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
     st.markdown(
         f"""
         <style>
-        /* 1. REMOÇÃO DO BOTÃO MANAGE APP E ELEMENTOS DE SISTEMA */
-        /* Alvos específicos pelo data-testid fornecido */
+        /* 1. ATAQUE TOTAL AO BOTÃO MANAGE APP E BARRAS DE SISTEMA */
+        /* Oculta pelo ID, TestID e Classes conhecidas */
+        header, footer, #MainMenu {{visibility: hidden !important;}}
+        
+        [data-testid="stAppDeployButton"], 
         [data-testid="manage-app-button"],
-        button[data-testid="manage-app-button"],
-        ._terminalButton_rix23_138,
-        .st-emotion-cache-zq5wmm,
-        .st-emotion-cache-1dp5vir {{
+        .stDeployButton,
+        div[data-testid="stToolbar"],
+        div[data-testid="stDecoration"],
+        div[class*="terminalButton"],
+        button[class*="terminalButton"] {{
             display: none !important;
             visibility: hidden !important;
-            opacity: 0 !important;
             height: 0 !important;
             width: 0 !important;
-            pointer-events: none !important;
+            opacity: 0 !important;
         }}
 
-        /* Ocultar barra superior e decorações */
-        header, footer, #MainMenu {{visibility: hidden !important;}}
-        [data-testid="stStatusWidget"], [data-testid="stDecoration"], [data-testid="stToolbar"] {{
-            display: none !important;
+        /* Remove a margem extra que o cabeçalho oculto deixa */
+        .stAppViewMain {{
+            margin-top: -60px;
         }}
 
-        /* 2. BACKGROUND AJUSTADO (Proporcional) */
+        /* 2. BACKGROUND PROPORCIONAL */
         .stApp {{
             background-image: url("{img_url}");
             background-size: cover;
@@ -53,30 +55,28 @@ def apply_custom_style():
             font-weight: bold;
         }}
 
-        /* 4. CHAT ESTILO TRADICIONAL (Alternado) */
+        /* 4. CHAT ALTERNADO (USUÁRIO À DIREITA, IA À ESQUERDA) */
         .stChatMessage {{
             background-color: rgba(255, 248, 231, 0.8) !important; 
             border-radius: 15px;
             border: 1px solid #8B4513;
             margin-bottom: 15px;
-            max-width: 75%;
+            max-width: 80%;
             display: flex !important;
         }}
 
-        /* Usuário à DIREITA */
         [data-testid="stChatMessageUser"] {{
             margin-left: auto !important;
             flex-direction: row-reverse !important;
             background-color: rgba(210, 180, 140, 0.9) !important;
         }}
 
-        /* Assistente à ESQUERDA */
         [data-testid="stChatMessageAssistant"] {{
             margin-right: auto !important;
         }}
 
-        /* Texto sempre em PRETO dentro do chat */
-        .stChatMessage [data-testid="stMarkdownContainer"] p {{
+        /* Texto em PRETO no chat */
+        .stChatMessage .stMarkdown p {{
             color: #000000 !important;
             font-weight: 500;
         }}
@@ -90,7 +90,7 @@ def apply_custom_style():
             color: #D2B48C !important;
         }}
 
-        /* Campo de Input */
+        /* Ajuste do campo de input */
         .stChatInputContainer {{
             background-color: rgba(255, 255, 255, 0.2) !important;
         }}
@@ -106,13 +106,14 @@ st.title("💬 Sou o AIosa, seu assistente virtual...")
 # --- CONFIGURAÇÕES DE API ---
 HF_TOKEN = os.getenv("HF_TOKEN")
 API_URL = "https://router.huggingface.co/v1/chat/completions"
-headers = { "Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json" }
+headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
 
-# --- INICIALIZAÇÃO DE ESTADOS (Preservando dados) ---
+# --- INICIALIZAÇÃO E PRESERVAÇÃO DE DADOS ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "tabela_dados" not in st.session_state:
+    # Sempre preservando e salvando novos dados conforme solicitado
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
 def perguntar_ia(mensagens_historico):
@@ -129,12 +130,11 @@ def perguntar_ia(mensagens_historico):
     except Exception as e:
         return f"⚠️ Erro de conexão: {str(e)}"
 
-# --- EXIBIÇÃO DO HISTÓRICO ---
+# --- EXIBIÇÃO ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- LÓGICA DE CHAT ---
 if prompt := st.chat_input("Como posso ajudar?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -143,7 +143,7 @@ if prompt := st.chat_input("Como posso ajudar?"):
     with st.chat_message("assistant"):
         placeholder = st.empty()
         full_response = ""
-        with st.spinner("Consultando arquivos..."):
+        with st.spinner("Consultando manuscritos..."):
             resposta_bruta = perguntar_ia(st.session_state.messages)
         
         for chunk in resposta_bruta.split(" "):
@@ -152,16 +152,16 @@ if prompt := st.chat_input("Como posso ajudar?"):
             placeholder.markdown(full_response + "▌")
         placeholder.markdown(full_response)
 
-    # Salvamento de dados conforme solicitado
+    # Salvando novo dado na tabela e preservando o anterior
     st.session_state.messages.append({"role": "assistant", "content": full_response})
     nova_linha = pd.DataFrame([{"Data/Hora": datetime.now().strftime("%H:%M:%S"), "Pergunta": prompt, "Resposta": full_response}])
     st.session_state.tabela_dados = pd.concat([st.session_state.tabela_dados, nova_linha], ignore_index=True)
 
-# --- SIDEBAR ---
+# --- MENU LATERAL ---
 with st.sidebar:
     st.subheader("Configurações")
     if st.button("Limpar Chat"):
         st.session_state.messages = []
         st.rerun()
     st.divider()
-    st.caption(f"Interações salvas: {len(st.session_state.tabela_dados)}")
+    st.caption(f"Interações documentadas: {len(st.session_state.tabela_dados)}")
