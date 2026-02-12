@@ -17,24 +17,20 @@ headers = {
 
 def perguntar_ia(pergunta):
     payload = {
-        "model": "HuggingFaceH4/zephyr-7b-beta",
+        "model": "microsoft/Phi-3-mini-4k-instruct",
         "messages": [
             {"role": "user", "content": pergunta}
         ],
         "max_tokens": 200,
     }
 
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload)
+    response = requests.post(API_URL, headers=headers, json=payload)
 
-        if response.status_code == 200:
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
-        else:
-            return f"Erro {response.status_code}: {response.text}"
-
-    except Exception as e:
-        return f"Erro de conexão: {e}"
+    if response.status_code == 200:
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+    else:
+        return f"Erro {response.status_code}: {response.text}"
 
 
 pergunta = st.text_input("Digite sua pergunta:")
