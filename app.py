@@ -6,67 +6,58 @@ import time
 from datetime import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="centered")
+st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
-# --- ESTILIZAÇÃO CUSTOMIZADA (Paleta de Cores da Imagem) ---
-def add_bg_and_style():
+# --- INJEÇÃO DE CSS PARA O BACKGROUND E ESTILO ---
+def apply_custom_style():
+    # Substitua pelo seu link direto (clique em 'Raw' no GitHub para obter o link correto)
+    img_url = "https://raw.githubusercontent.com/seu-usuario/seu-repositorio/main/AIOSA_LOGO.jpg"
+    
     st.markdown(
         f"""
         <style>
-        /* Fundo da tela principal */
+        /* Fundo principal do app */
         .stApp {{
-            background-image: url("https://raw.githubusercontent.com/seu-usuario/seu-repositorio/main/AIOSA_LOGO.jpg");
-            background-attachment: fixed;
+            background-image: url("{img_url}");
             background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
         }}
 
-        /* Centralização e largura do chat */
-        .stMain {{
-            max-width: 850px;
-            margin: 0 auto;
-        }}
-
-        /* Estilização das mensagens do usuário */
-        [data-testid="stChatMessage"]:nth-child(even) {{
-            background-color: rgba(210, 180, 140, 0.8) !important; /* Sépia claro */
+        /* Container do Chat para melhorar leitura sobre o fundo */
+        .stChatMessage {{
+            background-color: rgba(255, 248, 231, 0.85) !important; /* Bege pergaminho com transparência */
+            border-radius: 15px;
             border: 1px solid #8B4513;
-            color: #3E2723;
+            margin-bottom: 10px;
+            color: #3E2723 !important;
         }}
 
-        /* Estilização das mensagens do assistente */
-        [data-testid="stChatMessage"]:nth-child(odd) {{
-            background-color: rgba(245, 245, 220, 0.9) !important; /* Bege pergaminho */
-            border: 1px solid #A0522D;
-            color: #3E2723;
-        }}
-
-        /* Estilização da Sidebar (Barra Lateral) */
+        /* Estilização específica da Sidebar */
         [data-testid="stSidebar"] {{
-            background-color: rgba(62, 39, 35, 0.9) !important; /* Marrom escuro */
+            background-color: rgba(62, 39, 35, 0.9) !important; /* Marrom escuro da imagem */
         }}
         [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p {{
-            color: #D2B48C !important;
+            color: #D2B48C !important; /* Texto em tom areia */
         }}
 
-        /* Títulos e Textos */
+        /* Título Principal */
         h1 {{
             color: #3E2723 !important;
-            text-shadow: 1px 1px 2px rgba(255,255,255,0.5);
+            text-shadow: 2px 2px 4px rgba(255,255,255,0.7);
+            font-family: 'serif';
         }}
 
-        /* Input de texto */
+        /* Ajuste do campo de input */
         .stChatInputContainer {{
-            background-color: rgba(255, 255, 255, 0.2) !important;
-            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.1) !important;
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
 
-add_bg_and_style()
-
-# Nota: Certifique-se de substituir o link da imagem acima pelo link "Raw" correto do seu GitHub.
+apply_custom_style()
 
 st.title("💬 Sou o AIosa, seu assistente virtual...")
 
@@ -79,11 +70,12 @@ headers = {
     "Content-Type": "application/json",
 }
 
-# --- INICIALIZAÇÃO DE ESTADOS (Preservando dados conforme solicitado) ---
+# --- INICIALIZAÇÃO DE ESTADOS ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "tabela_dados" not in st.session_state:
+    # Preservando dados conforme instrução: salvando novos e mantendo existentes
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
 def perguntar_ia(mensagens_historico):
@@ -94,7 +86,6 @@ def perguntar_ia(mensagens_historico):
         "temperature": 0.7,
         "stream": False 
     }
-
     try:
         response = requests.post(API_URL, headers=headers, json=payload)
         if response.status_code == 200:
@@ -112,26 +103,24 @@ for message in st.session_state.messages:
 # --- INPUT E LÓGICA DE CHAT ---
 if prompt := st.chat_input("Como posso ajudar?"):
     
-    # 1. Exibe e guarda mensagem do usuário
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # 2. Resposta da IA com efeito de escrita
     with st.chat_message("assistant"):
         placeholder = st.empty()
         full_response = ""
         
-        with st.spinner("Pensando..."):
+        with st.spinner("Consultando arquivos..."):
             resposta_bruta = perguntar_ia(st.session_state.messages)
         
         for chunk in resposta_bruta.split(" "):
             full_response += chunk + " "
-            time.sleep(0.05)
+            time.sleep(0.04)
             placeholder.markdown(full_response + "▌")
         placeholder.markdown(full_response)
 
-    # 3. Salvamento silencioso e preservação de dados
+    # Salvamento de dados (sempre preservando o histórico anterior)
     st.session_state.messages.append({"role": "assistant", "content": full_response})
     
     nova_linha = pd.DataFrame([{
@@ -149,4 +138,5 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption(f"Interações salvas nesta sessão: {len(st.session_state.tabela_dados)}")
+    # Indicador discreto do histórico salvo
+    st.caption(f"Interações documentadas: {len(st.session_state.tabela_dados)}")
