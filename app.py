@@ -8,34 +8,35 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
-# --- INJEÇÃO DE CSS REFORÇADO PARA OCULTAÇÃO TOTAL ---
+# --- INJEÇÃO DE CSS REFORÇADO ---
 def apply_custom_style():
-    # Link direto da imagem
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
     st.markdown(
         f"""
         <style>
-        /* 1. REMOÇÃO AGRESSIVA DE INTERFACE ADMINISTRATIVA */
-        #MainMenu {{visibility: hidden !important;}}
-        footer {{visibility: hidden !important;}}
-        header {{visibility: hidden !important;}}
-        
-        /* Oculta botões de deploy e o persistente 'Manage app' */
-        .stDeployButton {{display:none !important;}}
-        [data-testid="stAppDeployButton"] {{display:none !important;}}
-        [data-testid="stToolbar"] {{display:none !important;}}
-        [data-testid="stDecoration"] {{display:none !important;}}
-        
-        /* Alvo específico para o botão de host do Streamlit Cloud */
-        [data-testid="manage-app-button"], 
-        .st-emotion-cache-zq5wmm, 
-        button[title="Manage app"] {{
+        /* 1. REMOÇÃO DO BOTÃO MANAGE APP E ELEMENTOS DE SISTEMA */
+        /* Alvos específicos pelo data-testid fornecido */
+        [data-testid="manage-app-button"],
+        button[data-testid="manage-app-button"],
+        ._terminalButton_rix23_138,
+        .st-emotion-cache-zq5wmm,
+        .st-emotion-cache-1dp5vir {{
             display: none !important;
             visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            width: 0 !important;
+            pointer-events: none !important;
         }}
 
-        /* 2. BACKGROUND AJUSTADO */
+        /* Ocultar barra superior e decorações */
+        header, footer, #MainMenu {{visibility: hidden !important;}}
+        [data-testid="stStatusWidget"], [data-testid="stDecoration"], [data-testid="stToolbar"] {{
+            display: none !important;
+        }}
+
+        /* 2. BACKGROUND AJUSTADO (Proporcional) */
         .stApp {{
             background-image: url("{img_url}");
             background-size: cover;
@@ -52,30 +53,30 @@ def apply_custom_style():
             font-weight: bold;
         }}
 
-        /* 4. CHAT ALTERNADO (USUÁRIO À DIREITA, IA À ESQUERDA) */
+        /* 4. CHAT ESTILO TRADICIONAL (Alternado) */
         .stChatMessage {{
             background-color: rgba(255, 248, 231, 0.8) !important; 
             border-radius: 15px;
             border: 1px solid #8B4513;
             margin-bottom: 15px;
-            max-width: 80%;
+            max-width: 75%;
             display: flex !important;
         }}
 
-        /* Alinhamento Usuário */
+        /* Usuário à DIREITA */
         [data-testid="stChatMessageUser"] {{
             margin-left: auto !important;
             flex-direction: row-reverse !important;
             background-color: rgba(210, 180, 140, 0.9) !important;
         }}
 
-        /* Alinhamento Assistente */
+        /* Assistente à ESQUERDA */
         [data-testid="stChatMessageAssistant"] {{
             margin-right: auto !important;
         }}
 
-        /* Texto em PRETO no chat */
-        .stChatMessage .stMarkdown p {{
+        /* Texto sempre em PRETO dentro do chat */
+        .stChatMessage [data-testid="stMarkdownContainer"] p {{
             color: #000000 !important;
             font-weight: 500;
         }}
@@ -87,6 +88,11 @@ def apply_custom_style():
         [data-testid="stSidebar"] .stMarkdown p, 
         [data-testid="stSidebar"] h3 {{
             color: #D2B48C !important;
+        }}
+
+        /* Campo de Input */
+        .stChatInputContainer {{
+            background-color: rgba(255, 255, 255, 0.2) !important;
         }}
         </style>
         """,
@@ -102,7 +108,7 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 API_URL = "https://router.huggingface.co/v1/chat/completions"
 headers = { "Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json" }
 
-# --- INICIALIZAÇÃO DE ESTADOS (Preservando dados conforme solicitado) ---
+# --- INICIALIZAÇÃO DE ESTADOS (Preservando dados) ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -123,12 +129,12 @@ def perguntar_ia(mensagens_historico):
     except Exception as e:
         return f"⚠️ Erro de conexão: {str(e)}"
 
-# --- EXIBIÇÃO DO HISTÓRICO VISUAL ---
+# --- EXIBIÇÃO DO HISTÓRICO ---
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# --- INPUT E LÓGICA DE CHAT ---
+# --- LÓGICA DE CHAT ---
 if prompt := st.chat_input("Como posso ajudar?"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -137,7 +143,7 @@ if prompt := st.chat_input("Como posso ajudar?"):
     with st.chat_message("assistant"):
         placeholder = st.empty()
         full_response = ""
-        with st.spinner("Lendo manuscritos..."):
+        with st.spinner("Consultando arquivos..."):
             resposta_bruta = perguntar_ia(st.session_state.messages)
         
         for chunk in resposta_bruta.split(" "):
@@ -146,16 +152,16 @@ if prompt := st.chat_input("Como posso ajudar?"):
             placeholder.markdown(full_response + "▌")
         placeholder.markdown(full_response)
 
-    # Salvamento de dados e preservação de histórico conforme instrução
+    # Salvamento de dados conforme solicitado
     st.session_state.messages.append({"role": "assistant", "content": full_response})
     nova_linha = pd.DataFrame([{"Data/Hora": datetime.now().strftime("%H:%M:%S"), "Pergunta": prompt, "Resposta": full_response}])
     st.session_state.tabela_dados = pd.concat([st.session_state.tabela_dados, nova_linha], ignore_index=True)
 
-# --- MENU LATERAL ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.subheader("Configurações")
     if st.button("Limpar Chat"):
         st.session_state.messages = []
         st.rerun()
     st.divider()
-    st.caption(f"Interações documentadas: {len(st.session_state.tabela_dados)}")
+    st.caption(f"Interações salvas: {len(st.session_state.tabela_dados)}")
