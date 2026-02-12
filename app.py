@@ -2,17 +2,17 @@ import streamlit as st
 import requests
 import os
 
-st.set_page_config(page_title="Assistente IA", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Assistente IA", page_icon="🤖")
 
 st.title("Assistente IA Online")
 
-# Token vindo do Streamlit Secrets
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
+API_URL = "https://router.huggingface.co/hf-inference/models/google/flan-t5-base"
 
 headers = {
-    "Authorization": f"Bearer {HF_TOKEN}"
+    "Authorization": f"Bearer {HF_TOKEN}",
+    "Content-Type": "application/json"
 }
 
 
@@ -35,10 +35,8 @@ def perguntar_ia(pergunta):
         return f"Erro de conexão: {e}"
 
 
-# Interface simples
 pergunta = st.text_input("Digite sua pergunta:")
 
 if pergunta:
     with st.spinner("Pensando..."):
-        resposta = perguntar_ia(pergunta)
-        st.write(resposta)
+        st.write(perguntar_ia(pergunta))
