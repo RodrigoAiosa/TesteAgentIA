@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
-# --- INJEÇÃO DE CSS PARA O BACKGROUND E ESTILO ---
+# --- INJEÇÃO DE CSS PARA O BACKGROUND AJUSTADO E ESTILOS ---
 def apply_custom_style():
     # Link direto da sua imagem no GitHub
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
@@ -16,11 +16,12 @@ def apply_custom_style():
     st.markdown(
         f"""
         <style>
-        /* Fundo principal do app */
+        /* Ajuste do Background para preencher 100% da tela */
         .stApp {{
             background-image: url("{img_url}");
-            background-size: cover;
+            background-size: 100% 100%; /* Estica para preencher largura e altura */
             background-position: center;
+            background-repeat: no-repeat;
             background-attachment: fixed;
         }}
 
@@ -32,32 +33,35 @@ def apply_custom_style():
             font-weight: bold;
         }}
 
-        /* Todos os textos do corpo do chat em PRETO */
-        .stChatMessage, .stMarkdown, p, li {{
+        /* Todos os textos do chat em PRETO */
+        [data-testid="stChatMessage"] .stMarkdown p, 
+        [data-testid="stChatMessage"] .stMarkdown li {{
             color: #000000 !important;
             font-weight: 500;
         }}
 
-        /* Container do Chat (balões) com leve transparência para ver o fundo */
+        /* Balões de Chat com transparência elegante */
         .stChatMessage {{
-            background-color: rgba(255, 248, 231, 0.80) !important; 
+            background-color: rgba(255, 248, 231, 0.75) !important; 
             border-radius: 15px;
             border: 1px solid #8B4513;
             margin-bottom: 10px;
         }}
 
-        /* Estilização da Sidebar */
+        /* Sidebar - Fundo Marrom e Texto Areia */
         [data-testid="stSidebar"] {{
             background-color: rgba(62, 39, 35, 0.95) !important; 
         }}
-        /* Textos da Sidebar em tom areia para contraste no fundo marrom */
-        [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p, [data-testid="stSidebar"] h3 {{
+        [data-testid="stSidebar"] .stMarkdown p, 
+        [data-testid="stSidebar"] h3, 
+        [data-testid="stSidebar"] span {{
             color: #D2B48C !important;
         }}
 
-        /* Ajuste do campo de input */
+        /* Input de Texto */
         .stChatInputContainer {{
             background-color: rgba(255, 255, 255, 0.2) !important;
+            border-radius: 10px;
         }}
         </style>
         """,
@@ -77,12 +81,12 @@ headers = {
     "Content-Type": "application/json",
 }
 
-# --- INICIALIZAÇÃO DE ESTADOS ---
+# --- INICIALIZAÇÃO DE ESTADOS (Preservando dados conforme solicitado) ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "tabela_dados" not in st.session_state:
-    # Preservando dados conforme instrução (salva novos e mantém existentes)
+    # Salvando novos dados e preservando existentes
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
 def perguntar_ia(mensagens_historico):
@@ -118,7 +122,7 @@ if prompt := st.chat_input("Como posso ajudar?"):
         placeholder = st.empty()
         full_response = ""
         
-        with st.spinner("Consultando pergaminhos..."):
+        with st.spinner("Lendo os manuscritos..."):
             resposta_bruta = perguntar_ia(st.session_state.messages)
         
         for chunk in resposta_bruta.split(" "):
