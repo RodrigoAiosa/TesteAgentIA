@@ -8,18 +8,28 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
-# --- INJEÇÃO DE CSS PARA O BACKGROUND PROPORCIONAL E ESTILOS ---
+# --- INJEÇÃO DE CSS (Background, Alinhamento e OCULTAÇÃO DE MENUS) ---
 def apply_custom_style():
-    # Link direto da sua imagem no GitHub
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
     st.markdown(
         f"""
         <style>
-        /* Ajuste do Background para ficar proporcional */
+        /* 1. OCULTAR MENUS PADRÃO DO STREAMLIT */
+        #MainMenu {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        header {{visibility: hidden;}}
+        [data-testid="stStatusWidget"] {{visibility: hidden;}}
+        
+        /* Ocultar o botão 'Manage app' e decorações de deploy */
+        .stDeployButton {{display:none;}}
+        [data-testid="stAppDeployButton"] {{display:none;}}
+        footer {{visibility: hidden;}}
+        
+        /* Estilização do Background proporcional */
         .stApp {{
             background-image: url("{img_url}");
-            background-size: cover; /* Mantém a proporção sem deformar */
+            background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
@@ -33,20 +43,36 @@ def apply_custom_style():
             font-weight: bold;
         }}
 
-        /* Todos os textos do chat em PRETO */
-        [data-testid="stChatMessage"] .stMarkdown p, 
-        [data-testid="stChatMessage"] .stMarkdown li {{
-            color: #000000 !important;
-            font-weight: 500;
-        }}
-
-        /* Balões de Chat com fundo pergaminho suave */
+        /* Estilização Geral das Mensagens */
         .stChatMessage {{
             background-color: rgba(255, 248, 231, 0.8) !important; 
             border-radius: 15px;
             border: 1px solid #8B4513;
-            margin-bottom: 10px;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            margin-bottom: 15px;
+            max-width: 80%;
+            display: flex !important;
+        }}
+
+        /* Alinhamento: USUÁRIO à DIREITA */
+        [data-testid="stChatMessageUser"] {{
+            margin-left: auto !important;
+            flex-direction: row-reverse !important;
+            text-align: right;
+            border: 1px solid #3E2723;
+            background-color: rgba(210, 180, 140, 0.9) !important;
+        }}
+
+        /* Alinhamento: ASSISTENTE à ESQUERDA */
+        [data-testid="stChatMessageAssistant"] {{
+            margin-right: auto !important;
+            text-align: left;
+        }}
+
+        /* Todos os textos do chat em PRETO */
+        .stChatMessage .stMarkdown p, 
+        .stChatMessage .stMarkdown li {{
+            color: #000000 !important;
+            font-weight: 500;
         }}
 
         /* Sidebar - Fundo Marrom e Texto Areia */
@@ -54,20 +80,13 @@ def apply_custom_style():
             background-color: rgba(45, 28, 25, 0.98) !important; 
         }}
         [data-testid="stSidebar"] .stMarkdown p, 
-        [data-testid="stSidebar"] h3, 
-        [data-testid="stSidebar"] span {{
+        [data-testid="stSidebar"] h3 {{
             color: #D2B48C !important;
         }}
 
-        /* Estilização do Campo de Entrada (Input) */
+        /* Estilização do Campo de Entrada */
         .stChatInputContainer {{
-            background-color: rgba(255, 255, 255, 0.15) !important;
-            border-radius: 10px;
-        }}
-        
-        /* Corrigindo ícones e labels auxiliares para preto no chat */
-        .stChatMessage [data-testid="stMarkdownContainer"] {{
-            color: #000000 !important;
+            background-color: rgba(255, 255, 255, 0.2) !important;
         }}
         </style>
         """,
@@ -81,18 +100,13 @@ st.title("💬 Sou o AIosa, seu assistente virtual...")
 # --- CONFIGURAÇÕES DE API ---
 HF_TOKEN = os.getenv("HF_TOKEN")
 API_URL = "https://router.huggingface.co/v1/chat/completions"
-
-headers = {
-    "Authorization": f"Bearer {HF_TOKEN}",
-    "Content-Type": "application/json",
-}
+headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
 
 # --- INICIALIZAÇÃO DE ESTADOS (Preservando dados conforme solicitado) ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "tabela_dados" not in st.session_state:
-    # Salvando novos dados e preservando existentes
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
 def perguntar_ia(mensagens_historico):
@@ -105,10 +119,7 @@ def perguntar_ia(mensagens_historico):
     }
     try:
         response = requests.post(API_URL, headers=headers, json=payload)
-        if response.status_code == 200:
-            return response.json()["choices"][0]["message"]["content"]
-        else:
-            return f"⚠️ Erro: {response.status_code}"
+        return response.json()["choices"][0]["message"]["content"] if response.status_code == 200 else f"⚠️ Erro: {response.status_code}"
     except Exception as e:
         return f"⚠️ Erro de conexão: {str(e)}"
 
@@ -127,25 +138,18 @@ if prompt := st.chat_input("Como posso ajudar?"):
     with st.chat_message("assistant"):
         placeholder = st.empty()
         full_response = ""
-        
         with st.spinner("Consultando manuscritos..."):
             resposta_bruta = perguntar_ia(st.session_state.messages)
         
-        # Efeito de digitação
         for chunk in resposta_bruta.split(" "):
             full_response += chunk + " "
             time.sleep(0.04)
             placeholder.markdown(full_response + "▌")
         placeholder.markdown(full_response)
 
-    # Salvamento de dados e preservação de histórico conforme instrução
+    # Salvamento e preservação de histórico
     st.session_state.messages.append({"role": "assistant", "content": full_response})
-    
-    nova_linha = pd.DataFrame([{
-        "Data/Hora": datetime.now().strftime("%H:%M:%S"),
-        "Pergunta": prompt,
-        "Resposta": full_response
-    }])
+    nova_linha = pd.DataFrame([{"Data/Hora": datetime.now().strftime("%H:%M:%S"), "Pergunta": prompt, "Resposta": full_response}])
     st.session_state.tabela_dados = pd.concat([st.session_state.tabela_dados, nova_linha], ignore_index=True)
 
 # --- MENU LATERAL ---
@@ -154,7 +158,5 @@ with st.sidebar:
     if st.button("Limpar Chat"):
         st.session_state.messages = []
         st.rerun()
-    
     st.divider()
-    # Mantendo registro das interações conforme solicitado
-    st.caption(f"Interações documentadas nesta sessão: {len(st.session_state.tabela_dados)}")
+    st.caption(f"Interações documentadas: {len(st.session_state.tabela_dados)}")
