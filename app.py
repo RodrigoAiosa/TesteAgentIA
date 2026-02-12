@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
-# --- INJEÇÃO DE CSS PARA O BACKGROUND AJUSTADO E ESTILOS ---
+# --- INJEÇÃO DE CSS PARA O BACKGROUND PROPORCIONAL E ESTILOS ---
 def apply_custom_style():
     # Link direto da sua imagem no GitHub
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
@@ -16,10 +16,10 @@ def apply_custom_style():
     st.markdown(
         f"""
         <style>
-        /* Ajuste do Background para preencher 100% da tela */
+        /* Ajuste do Background para ficar proporcional */
         .stApp {{
             background-image: url("{img_url}");
-            background-size: 100% 100%; /* Estica para preencher largura e altura */
+            background-size: cover; /* Mantém a proporção sem deformar */
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
@@ -28,7 +28,7 @@ def apply_custom_style():
         /* Título Principal em BRANCO */
         h1 {{
             color: #FFFFFF !important;
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.9);
             font-family: 'serif';
             font-weight: bold;
         }}
@@ -40,17 +40,18 @@ def apply_custom_style():
             font-weight: 500;
         }}
 
-        /* Balões de Chat com transparência elegante */
+        /* Balões de Chat com fundo pergaminho suave */
         .stChatMessage {{
-            background-color: rgba(255, 248, 231, 0.75) !important; 
+            background-color: rgba(255, 248, 231, 0.8) !important; 
             border-radius: 15px;
             border: 1px solid #8B4513;
             margin-bottom: 10px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
         }}
 
         /* Sidebar - Fundo Marrom e Texto Areia */
         [data-testid="stSidebar"] {{
-            background-color: rgba(62, 39, 35, 0.95) !important; 
+            background-color: rgba(45, 28, 25, 0.98) !important; 
         }}
         [data-testid="stSidebar"] .stMarkdown p, 
         [data-testid="stSidebar"] h3, 
@@ -58,10 +59,15 @@ def apply_custom_style():
             color: #D2B48C !important;
         }}
 
-        /* Input de Texto */
+        /* Estilização do Campo de Entrada (Input) */
         .stChatInputContainer {{
-            background-color: rgba(255, 255, 255, 0.2) !important;
+            background-color: rgba(255, 255, 255, 0.15) !important;
             border-radius: 10px;
+        }}
+        
+        /* Corrigindo ícones e labels auxiliares para preto no chat */
+        .stChatMessage [data-testid="stMarkdownContainer"] {{
+            color: #000000 !important;
         }}
         </style>
         """,
@@ -122,16 +128,17 @@ if prompt := st.chat_input("Como posso ajudar?"):
         placeholder = st.empty()
         full_response = ""
         
-        with st.spinner("Lendo os manuscritos..."):
+        with st.spinner("Consultando manuscritos..."):
             resposta_bruta = perguntar_ia(st.session_state.messages)
         
+        # Efeito de digitação
         for chunk in resposta_bruta.split(" "):
             full_response += chunk + " "
             time.sleep(0.04)
             placeholder.markdown(full_response + "▌")
         placeholder.markdown(full_response)
 
-    # Salvamento de dados e preservação de histórico
+    # Salvamento de dados e preservação de histórico conforme instrução
     st.session_state.messages.append({"role": "assistant", "content": full_response})
     
     nova_linha = pd.DataFrame([{
@@ -149,4 +156,5 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    st.caption(f"Interações documentadas: {len(st.session_state.tabela_dados)}")
+    # Mantendo registro das interações conforme solicitado
+    st.caption(f"Interações documentadas nesta sessão: {len(st.session_state.tabela_dados)}")
