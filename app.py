@@ -16,7 +16,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("💬 Chat IA Assistente")
+st.title("💬 Sou o AIosa, seu asistente virtual...")
 
 # --- CONFIGURAÇÕES DE API ---
 HF_TOKEN = os.getenv("HF_TOKEN")
