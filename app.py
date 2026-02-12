@@ -8,23 +8,29 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
-# --- INJEÇÃO DE CSS (Background, Alinhamento e OCULTAÇÃO DE MENUS) ---
+# --- INJEÇÃO DE CSS REFORÇADO (Background e Ocultação Total) ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
     st.markdown(
         f"""
         <style>
-        /* 1. OCULTAR MENUS PADRÃO DO STREAMLIT */
+        /* 1. OCULTAR ABSOLUTAMENTE TUDO DO SISTEMA */
         #MainMenu {{visibility: hidden;}}
         footer {{visibility: hidden;}}
         header {{visibility: hidden;}}
-        [data-testid="stStatusWidget"] {{visibility: hidden;}}
         
-        /* Ocultar o botão 'Manage app' e decorações de deploy */
-        .stDeployButton {{display:none;}}
-        [data-testid="stAppDeployButton"] {{display:none;}}
-        footer {{visibility: hidden;}}
+        /* Oculta botões de deploy, 'Manage app' e decorações extras */
+        .stDeployButton {{display:none !important;}}
+        [data-testid="stAppDeployButton"] {{display:none !important;}}
+        [data-testid="stToolbar"] {{display:none !important;}}
+        [data-testid="stDecoration"] {{display:none !important;}}
+        [data-testid="stStatusWidget"] {{display:none !important;}}
+        
+        /* Força a remoção do botão 'Manage app' que fica no rodapé */
+        div[class^="st-emotion-cache"] > button {{
+            display: none !important;
+        }}
         
         /* Estilização do Background proporcional */
         .stApp {{
@@ -147,7 +153,7 @@ if prompt := st.chat_input("Como posso ajudar?"):
             placeholder.markdown(full_response + "▌")
         placeholder.markdown(full_response)
 
-    # Salvamento e preservação de histórico
+    # Salvamento e preservação de histórico conforme instrução
     st.session_state.messages.append({"role": "assistant", "content": full_response})
     nova_linha = pd.DataFrame([{"Data/Hora": datetime.now().strftime("%H:%M:%S"), "Pergunta": prompt, "Resposta": full_response}])
     st.session_state.tabela_dados = pd.concat([st.session_state.tabela_dados, nova_linha], ignore_index=True)
