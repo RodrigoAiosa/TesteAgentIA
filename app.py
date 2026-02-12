@@ -10,8 +10,8 @@ st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
 # --- INJEÇÃO DE CSS PARA O BACKGROUND E ESTILO ---
 def apply_custom_style():
-    # Substitua pelo seu link direto (clique em 'Raw' no GitHub para obter o link correto)
-    img_url = "https://raw.githubusercontent.com/seu-usuario/seu-repositorio/main/AIOSA_LOGO.jpg"
+    # Link direto da sua imagem no GitHub
+    img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
     st.markdown(
         f"""
@@ -24,33 +24,40 @@ def apply_custom_style():
             background-attachment: fixed;
         }}
 
-        /* Container do Chat para melhorar leitura sobre o fundo */
+        /* Título Principal em BRANCO */
+        h1 {{
+            color: #FFFFFF !important;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+            font-family: 'serif';
+            font-weight: bold;
+        }}
+
+        /* Todos os textos do corpo do chat em PRETO */
+        .stChatMessage, .stMarkdown, p, li {{
+            color: #000000 !important;
+            font-weight: 500;
+        }}
+
+        /* Container do Chat (balões) com leve transparência para ver o fundo */
         .stChatMessage {{
-            background-color: rgba(255, 248, 231, 0.85) !important; /* Bege pergaminho com transparência */
+            background-color: rgba(255, 248, 231, 0.80) !important; 
             border-radius: 15px;
             border: 1px solid #8B4513;
             margin-bottom: 10px;
-            color: #3E2723 !important;
         }}
 
-        /* Estilização específica da Sidebar */
+        /* Estilização da Sidebar */
         [data-testid="stSidebar"] {{
-            background-color: rgba(62, 39, 35, 0.9) !important; /* Marrom escuro da imagem */
+            background-color: rgba(62, 39, 35, 0.95) !important; 
         }}
-        [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p {{
-            color: #D2B48C !important; /* Texto em tom areia */
-        }}
-
-        /* Título Principal */
-        h1 {{
-            color: #3E2723 !important;
-            text-shadow: 2px 2px 4px rgba(255,255,255,0.7);
-            font-family: 'serif';
+        /* Textos da Sidebar em tom areia para contraste no fundo marrom */
+        [data-testid="stSidebar"] .stMarkdown, [data-testid="stSidebar"] p, [data-testid="stSidebar"] h3 {{
+            color: #D2B48C !important;
         }}
 
         /* Ajuste do campo de input */
         .stChatInputContainer {{
-            background-color: rgba(255, 255, 255, 0.1) !important;
+            background-color: rgba(255, 255, 255, 0.2) !important;
         }}
         </style>
         """,
@@ -75,7 +82,7 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "tabela_dados" not in st.session_state:
-    # Preservando dados conforme instrução: salvando novos e mantendo existentes
+    # Preservando dados conforme instrução (salva novos e mantém existentes)
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
 def perguntar_ia(mensagens_historico):
@@ -111,7 +118,7 @@ if prompt := st.chat_input("Como posso ajudar?"):
         placeholder = st.empty()
         full_response = ""
         
-        with st.spinner("Consultando arquivos..."):
+        with st.spinner("Consultando pergaminhos..."):
             resposta_bruta = perguntar_ia(st.session_state.messages)
         
         for chunk in resposta_bruta.split(" "):
@@ -120,7 +127,7 @@ if prompt := st.chat_input("Como posso ajudar?"):
             placeholder.markdown(full_response + "▌")
         placeholder.markdown(full_response)
 
-    # Salvamento de dados (sempre preservando o histórico anterior)
+    # Salvamento de dados e preservação de histórico
     st.session_state.messages.append({"role": "assistant", "content": full_response})
     
     nova_linha = pd.DataFrame([{
@@ -138,5 +145,4 @@ with st.sidebar:
         st.rerun()
     
     st.divider()
-    # Indicador discreto do histórico salvo
     st.caption(f"Interações documentadas: {len(st.session_state.tabela_dados)}")
