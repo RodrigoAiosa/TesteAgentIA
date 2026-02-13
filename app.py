@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="✍️", layout="wide")
 
-# --- INJEÇÃO DE CSS (FOCO EM PRETO ABSOLUTO E REMOÇÃO DE RUIDO VISUAL) ---
+# --- INJEÇÃO DE CSS ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
@@ -17,11 +17,9 @@ def apply_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600;800&display=swap');
 
-        /* 1. OCULTAR INTERFACE PADRÃO */
         header, footer, #MainMenu {{visibility: hidden !important;}}
         [data-testid="stAppDeployButton"], .stDeployButton {{ display: none !important; }}
 
-        /* 2. BACKGROUND */
         .stApp {{
             background-image: url("{img_url}");
             background-size: cover;
@@ -29,18 +27,15 @@ def apply_custom_style():
             background-attachment: fixed;
         }}
 
-        /* 3. REMOVER TEXTOS "face" E "smart_toy" DOS AVATARES */
         [data-testid="stChatMessageAvatarContainer"] div {{
             color: transparent !important;
             font-size: 0px !important;
         }}
 
-        /* 4. TEXTOS EM PRETO ABSOLUTO (#000000) */
         h1, h2, h3, p, span, li, div {{
             font-family: 'EB Garamond', serif !important;
         }}
 
-        /* Força PRETO em todas as mensagens do chat e alertas */
         .stChatMessage .stMarkdown p, 
         .stChatMessage .stMarkdown li,
         .stChatMessage span,
@@ -51,7 +46,6 @@ def apply_custom_style():
             font-weight: 600 !important;
         }}
 
-        /* 5. BALÕES DE MENSAGEM (SÓLIDOS PARA LEITURA) */
         .stChatMessage {{
             background-color: rgba(255, 250, 240, 0.98) !important; 
             border: 2px solid #5D4037;
@@ -59,12 +53,10 @@ def apply_custom_style():
             margin-bottom: 10px;
         }}
 
-        /* Balão do Usuário */
         [data-testid="stChatMessageUser"] {{ 
             background-color: #E0C9A6 !important; 
         }}
 
-        /* 6. CAMPO DE ENTRADA (INPUT) */
         .stChatInputContainer textarea {{ 
             color: #000000 !important; 
             font-weight: 600 !important; 
@@ -82,9 +74,21 @@ def apply_custom_style():
 
 apply_custom_style()
 
+# --- CARREGAR CONHECIMENTO EXTERNO ---
+def carregar_contexto():
+    try:
+        # Tenta ler o arquivo que você criará no GitHub
+        with open("instrucoes.txt", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Você é um assistente prestativo."
+
 # --- INICIALIZAÇÃO E MEMÓRIA ---
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    # Inicia o chat com o conhecimento do seu arquivo .txt
+    contexto = carregar_contexto()
+    st.session_state.messages = [{"role": "system", "content": contexto}]
+
 if "tabela_dados" not in st.session_state:
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
@@ -99,7 +103,7 @@ def perguntar_ia(historico):
     
     payload = {
         "model": "meta-llama/Llama-3.2-3B-Instruct",
-        "messages": historico[-6:],
+        "messages": historico, # Enviamos o histórico completo (incluindo o system prompt)
         "max_tokens": 800,
         "temperature": 0.7
     }
@@ -116,11 +120,12 @@ def perguntar_ia(historico):
 # --- INTERFACE PRINCIPAL ---
 st.title("💬 Sou o Alosa, seu assistente virtual...")
 
-# Exibição do Histórico
+# Exibição do Histórico (Pulando a mensagem de sistema para não poluir o chat)
 for msg in st.session_state.messages:
-    icone = "👤" if msg["role"] == "user" else "✍️"
-    with st.chat_message(msg["role"], avatar=icone):
-        st.markdown(msg["content"])
+    if msg["role"] != "system":
+        icone = "👤" if msg["role"] == "user" else "✍️"
+        with st.chat_message(msg["role"], avatar=icone):
+            st.markdown(msg["content"])
 
 # --- PROCESSAMENTO DO PROMPT ---
 if prompt := st.chat_input("Como posso ajudar hoje?"):
@@ -136,10 +141,9 @@ if prompt := st.chat_input("Como posso ajudar hoje?"):
             resposta = perguntar_ia(st.session_state.messages)
         
         if "⚠️" in resposta:
-            st.error(resposta) # O CSS agora garante que este texto será preto
+            st.error(resposta)
             full_res = resposta
         else:
-            # Efeito de digitação
             for chunk in resposta.split(" "):
                 full_res += chunk + " "
                 time.sleep(0.015)
@@ -159,6 +163,6 @@ if prompt := st.chat_input("Como posso ajudar hoje?"):
 with st.sidebar:
     st.subheader("📜 Painel de Controle")
     if st.button("Limpar Conversa"):
-        st.session_state.messages = []
+        st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
         st.rerun()
     st.write(f"Interações registradas: {len(st.session_state.tabela_dados)}")
