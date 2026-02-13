@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="✍️", layout="wide")
 
-# --- INJEÇÃO DE CSS (FOCO EM TEXTO PRETO E LEGIBILIDADE MÁXIMA) ---
+# --- INJEÇÃO DE CSS (FOCO EM LEGIBILIDADE E ESTILO) ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
@@ -17,7 +17,7 @@ def apply_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;700&display=swap');
 
-        /* 1. OCULTAÇÃO DE INTERFACE DE SISTEMA */
+        /* 1. LIMPEZA DA INTERFACE */
         header, footer, #MainMenu {{visibility: hidden !important;}}
         [data-testid="stAppDeployButton"], [data-testid="manage-app-button"], 
         .stDeployButton, ._terminalButton_rix23_138 {{ display: none !important; }}
@@ -32,42 +32,39 @@ def apply_custom_style():
             background-attachment: fixed;
         }}
 
-        /* 3. TEXTOS EM PRETO (FORÇADO PARA LEGIBILIDADE) */
+        /* 3. CONTROLE TOTAL DE TEXTO (PRETO ABSOLUTO) */
         h1 {{
             color: #000000 !important;
             font-family: 'EB Garamond', serif;
             font-weight: 700;
-            text-shadow: none !important;
         }}
 
-        /* Mensagens do Chat */
-        .stChatMessage {{
-            background-color: rgba(255, 248, 231, 0.95) !important; 
+        /* Balões de Chat e Notificações */
+        .stChatMessage, [data-testid="stNotification"], .stAlert {{
+            background-color: rgba(255, 248, 231, 0.95) !important;
             border: 1px solid #8B4513;
             border-radius: 15px;
         }}
 
-        /* Força a cor PRETA em todos os textos de mensagens */
+        /* Força texto preto em todos os elementos de texto do chat */
         .stChatMessage .stMarkdown p, 
-        .stChatMessage [data-testid="stMarkdownContainer"] p,
         .stChatMessage span,
-        .stChatMessage code {{
+        .stAlert div,
+        [data-testid="stNotification"] div {{
             color: #000000 !important;
             font-family: 'EB Garamond', serif;
-            font-size: 1.3rem !important;
+            font-size: 1.25rem !important;
             font-weight: 500 !important;
         }}
 
-        /* Balão do Usuário */
         [data-testid="stChatMessageUser"] {{
             background-color: rgba(210, 180, 140, 1.0) !important;
         }}
 
-        /* 4. CAMPO DE ENTRADA (INPUT) */
+        /* 4. CAMPO DE ENTRADA */
         .stChatInputContainer textarea {{
             color: #000000 !important;
             -webkit-text-fill-color: #000000 !important;
-            font-weight: 600 !important;
         }}
         
         .stChatInputContainer {{
@@ -85,18 +82,22 @@ def apply_custom_style():
 
 apply_custom_style()
 
-# --- INICIALIZAÇÃO E MEMÓRIA ---
+# --- INICIALIZAÇÃO ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "tabela_dados" not in st.session_state:
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
-# --- FUNÇÃO DA IA (COM TRATAMENTO DE ERRO DETALHADO) ---
+# --- FUNÇÃO DA IA (CONEXÃO SEGURA) ---
 def perguntar_ia(historico):
-    # Janela de memória: enviamos apenas as últimas 8 mensagens
     contexto = historico[-8:] if len(historico) > 8 else historico
     
-    HF_TOKEN = os.getenv("HF_TOKEN")
+    # Prioriza o segredo configurado na imagem que você enviou
+    HF_TOKEN = st.secrets.get("HF_TOKEN")
+    
+    if not HF_TOKEN:
+        return "⚠️ Erro: O Token (Secrets) não foi detectado pelo sistema."
+
     API_URL = "https://router.huggingface.co/v1/chat/completions"
     headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
     
@@ -108,31 +109,23 @@ def perguntar_ia(historico):
     }
     
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=15)
-        
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=20)
         if response.status_code == 200:
             return response.json()["choices"][0]["message"]["content"]
-        elif response.status_code == 401:
-            return "⚠️ Erro de Autenticação: Verifique se o seu HF_TOKEN está correto nas Secrets."
-        elif response.status_code == 429:
-            return "⚠️ Limite Excedido: Muitas requisições ao modelo. Tente novamente em alguns instantes."
         else:
-            return f"⚠️ Erro na API (Status {response.status_code}): {response.text}"
-            
-    except requests.exceptions.Timeout:
-        return "⚠️ O tempo de resposta esgotou. A conexão com o servidor está lenta."
+            return f"⚠️ Problema técnico (Código {response.status_code})."
     except Exception as e:
-        return f"⚠️ Erro inesperado: {str(e)}"
+        return f"⚠️ Erro de conexão: {str(e)}"
 
-# --- INTERFACE ---
+# --- INTERFACE PRINCIPAL ---
 st.title("💬 Sou o Alosa, seu assistente virtual...")
 
-# Exibe histórico
+# Exibe o histórico de mensagens
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- PROCESSAMENTO ---
+# --- FLUXO DE CHAT ---
 if prompt := st.chat_input("Como posso ajudar?"):
     st.toast("O Alosa está escrevendo...", icon="✍️")
     
@@ -147,8 +140,8 @@ if prompt := st.chat_input("Como posso ajudar?"):
         with st.spinner("Consultando manuscritos..."):
             resposta = perguntar_ia(st.session_state.messages)
         
-        # Só faz o efeito de digitação se não for uma mensagem de erro curta
-        if resposta.startswith("⚠️"):
+        # Tratamento visual para mensagens de erro
+        if "⚠️" in resposta:
             placeholder.error(resposta)
             full_res = resposta
         else:
@@ -158,7 +151,7 @@ if prompt := st.chat_input("Como posso ajudar?"):
                 placeholder.markdown(full_res + "▌")
             placeholder.markdown(full_res)
 
-    # Salvamento de Dados (Preservando o histórico conforme instruído)
+    # Preservação dos dados na tabela
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     nova_linha = pd.DataFrame([{
         "Data/Hora": datetime.now().strftime("%H:%M:%S"), 
@@ -174,4 +167,4 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
     st.divider()
-    st.write(f"Interações: {len(st.session_state.tabela_dados)}")
+    st.write(f"Interações documentadas: {len(st.session_state.tabela_dados)}")
