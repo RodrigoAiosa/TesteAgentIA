@@ -42,7 +42,7 @@ def apply_custom_style():
 
         /* Mensagens do Chat */
         .stChatMessage {{
-            background-color: rgba(255, 248, 231, 0.95) !important; /* Mais sólido para ler melhor */
+            background-color: rgba(255, 248, 231, 0.95) !important; 
             border: 1px solid #8B4513;
             border-radius: 15px;
         }}
@@ -54,17 +54,16 @@ def apply_custom_style():
         .stChatMessage code {{
             color: #000000 !important;
             font-family: 'EB Garamond', serif;
-            font-size: 1.3rem !important; /* Texto levemente maior */
+            font-size: 1.3rem !important;
             font-weight: 500 !important;
         }}
 
         /* Balão do Usuário */
         [data-testid="stChatMessageUser"] {{
-            background-color: rgba(210, 180, 140, 1.0) !important; /* Totalmente opaco */
+            background-color: rgba(210, 180, 140, 1.0) !important;
         }}
 
         /* 4. CAMPO DE ENTRADA (INPUT) */
-        /* Garante que o texto digitado e o placeholder sejam visíveis */
         .stChatInputContainer textarea {{
             color: #000000 !important;
             -webkit-text-fill-color: #000000 !important;
@@ -72,7 +71,7 @@ def apply_custom_style():
         }}
         
         .stChatInputContainer {{
-            background-color: rgba(255, 255, 255, 0.8) !important; /* Fundo do input mais claro */
+            background-color: rgba(255, 255, 255, 0.8) !important;
             border: 2px solid #8B4513 !important;
         }}
 
@@ -92,7 +91,7 @@ if "messages" not in st.session_state:
 if "tabela_dados" not in st.session_state:
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
-# --- FUNÇÃO DA IA (MEMÓRIA DE CURTO PRAZO) ---
+# --- FUNÇÃO DA IA (COM TRATAMENTO DE ERRO DETALHADO) ---
 def perguntar_ia(historico):
     # Janela de memória: enviamos apenas as últimas 8 mensagens
     contexto = historico[-8:] if len(historico) > 8 else historico
@@ -109,10 +108,21 @@ def perguntar_ia(historico):
     }
     
     try:
-        response = requests.post(API_URL, headers=headers, json=payload)
-        return response.json()["choices"][0]["message"]["content"]
-    except:
-        return "Desculpe, tive um problema ao redigir sua resposta."
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=15)
+        
+        if response.status_code == 200:
+            return response.json()["choices"][0]["message"]["content"]
+        elif response.status_code == 401:
+            return "⚠️ Erro de Autenticação: Verifique se o seu HF_TOKEN está correto nas Secrets."
+        elif response.status_code == 429:
+            return "⚠️ Limite Excedido: Muitas requisições ao modelo. Tente novamente em alguns instantes."
+        else:
+            return f"⚠️ Erro na API (Status {response.status_code}): {response.text}"
+            
+    except requests.exceptions.Timeout:
+        return "⚠️ O tempo de resposta esgotou. A conexão com o servidor está lenta."
+    except Exception as e:
+        return f"⚠️ Erro inesperado: {str(e)}"
 
 # --- INTERFACE ---
 st.title("💬 Sou o Alosa, seu assistente virtual...")
@@ -137,13 +147,18 @@ if prompt := st.chat_input("Como posso ajudar?"):
         with st.spinner("Consultando manuscritos..."):
             resposta = perguntar_ia(st.session_state.messages)
         
-        for chunk in resposta.split(" "):
-            full_res += chunk + " "
-            time.sleep(0.02)
-            placeholder.markdown(full_res + "▌")
-        placeholder.markdown(full_res)
+        # Só faz o efeito de digitação se não for uma mensagem de erro curta
+        if resposta.startswith("⚠️"):
+            placeholder.error(resposta)
+            full_res = resposta
+        else:
+            for chunk in resposta.split(" "):
+                full_res += chunk + " "
+                time.sleep(0.02)
+                placeholder.markdown(full_res + "▌")
+            placeholder.markdown(full_res)
 
-    # Salvamento de Dados
+    # Salvamento de Dados (Preservando o histórico conforme instruído)
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     nova_linha = pd.DataFrame([{
         "Data/Hora": datetime.now().strftime("%H:%M:%S"), 
