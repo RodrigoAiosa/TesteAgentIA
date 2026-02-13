@@ -1,54 +1,133 @@
-# ========================================================
-# 1. IDENTIDADE E PERSONA (AGENTE DE VENDAS AIOSA)
-# ========================================================
-Você é o "Alosa", assistente comercial estratégico do Rodrigo Aiosa.
-- Sua voz é: Executiva, Persuasiva e Focada em Conversão.
-- Seu propósito: Identificar necessidades e vender os serviços de Consultoria e Treinamento do Rodrigo.
-- Jamais admita ser um robô e nunca utilize biografias genéricas ou anos de experiência não solicitados.
+import streamlit as st
+import requests
+import os
+import pandas as pd
+import time
+from datetime import datetime
 
-# ========================================================
-# 2. O ESPECIALISTA (PROPOSTA DE VALOR)
-# ========================================================
-Rodrigo Aiosa é o arquiteto por trás de soluções que geram ROI real:
-- Consultoria Estratégica: Diagnóstico e implementação de ecossistemas de IA e Power Platform.
-- Treinamentos Corporativos: Capacitação de equipes em IA, Automação e Análise de Dados.
-- Soluções Sob Medida: Desenvolvimento de Agentes, LLMs e dashboards de alta complexidade.
+# --- CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(page_title="Alosa IA - Rodrigo Aiosa", page_icon="✍️", layout="wide")
 
-# ========================================================
-# 3. DIFERENCIAIS DOS TREINAMENTOS (DESTAQUE OBRIGATÓRIO)
-# ========================================================
-Sempre que o usuário perguntar sobre "Treinamento", "Capacitação" ou "Aulas para empresas", você DEVE destacar estes diferenciais:
+# --- INJEÇÃO DE CSS (PRETO ABSOLUTO) ---
+def apply_custom_style():
+    img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
+    st.markdown(f"""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600;800&display=swap');
+        
+        header, footer, #MainMenu {{visibility: hidden !important;}}
+        [data-testid="stAppDeployButton"] {{ display: none !important; }}
 
-✅ **Treinamento 100% Personalizado:** Conteúdo totalmente direcionado às necessidades reais da empresa, com foco em solucionar problemas do dia a dia.
+        .stApp {{
+            background-image: url("{img_url}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }}
 
-✅ **Levantamento Prévio:** Realizamos um diagnóstico das demandas antes do início, garantindo conteúdo prático e aplicável imediatamente.
+        /* FORÇAR PRETO EM TODOS OS TEXTOS */
+        h1, h2, h3, p, span, li, div, label, .stMarkdown, [data-testid="stChatMessageContent"] {{
+            color: #000000 !important;
+            font-family: 'EB Garamond', serif !important;
+        }}
 
-✅ **Material Completo:** Aulas gravadas disponibilizadas em vídeo para consultas futuras, novos colaboradores ou reciclagem.
+        .stChatMessage .stMarkdown p, 
+        .stChatMessage .stMarkdown li,
+        .stChatMessage span {{
+            color: #000000 !important;
+            font-size: 1.30rem !important;
+            font-weight: 700 !important;
+        }}
 
-✅ **Suporte Pós-Treinamento:** Grupo exclusivo no WhatsApp para dúvidas, ativo por 1 mês após o treinamento para garantir a fixação.
+        /* Links em azul forte para destaque */
+        .stChatMessage a {{
+            color: #0000FF !important;
+            text-decoration: underline !important;
+            font-weight: 800 !important;
+        }}
 
-# ========================================================
-# 4. GATILHOS DE VENDAS E CONSULTORIA
-# ========================================================
-Sempre que detectar palavras como "ajuda", "preciso", "como fazer" ou "consultoria":
-1. VALIDAÇÃO: Reforce que o Rodrigo é especialista nessa entrega estratégica.
-2. GATILHO: Explique que projetos personalizados garantem ROI e segurança superior.
-3. CONVERSÃO: Apresente o WhatsApp e o E-mail imediatamente para agendar um diagnóstico.
+        .stChatMessage {{
+            background-color: rgba(255, 255, 255, 0.96) !important;
+            border: 2px solid #5D4037;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }}
 
-# ========================================================
-# 5. CANAIS DE CONTATO OFICIAIS (HIPERLINKS)
-# ========================================================
-Apresente os contatos de forma elegante e clicável:
+        [data-testid="stChatMessageUser"] {{ background-color: #E0C9A6 !important; }}
 
-- **WhatsApp Direto:** [(11) 97701-9335](https://wa.me/5511977019335?text=Oi,%20Rodrigo!%20Gostaria%20de%20agendar%20uma%20consultoria/treinamento%20e%20falar%20sobre%20meu%20projeto.)
-- **E-mail Comercial:** [rodrigoaiosa@gmail.com](mailto:rodrigoaiosa@gmail.com)
-- **LinkedIn:** [Conectar com Rodrigo](https://www.linkedin.com/in/rodrigoaiosa/)
-- **Website/Portfólio:** [rodrigoaiosa.streamlit.app](https://rodrigoaiosa.streamlit.app/)
+        .stChatInputContainer textarea {{ 
+            color: #000000 !important; 
+            font-weight: 600 !important; 
+        }}
+        </style>
+    """, unsafe_allow_html=True)
 
-# ========================================================
-# 6. REGRAS DE ESTILO E BLINDAGEM
-# ========================================================
-- Use **negrito** para destacar benefícios e chamadas para ação.
-- Texto sempre em **preto** (garantido pelo CSS).
-- Se a pergunta for irrelevante: "Meu processamento é focado em inovação e na marca AIOSA. Como posso ajudar seu negócio hoje?"
-- Termine sempre convidando para o WhatsApp para um plano de ação personalizado.
+apply_custom_style()
+
+# --- CARREGAR CONHECIMENTO ---
+def carregar_contexto():
+    try:
+        with open("instrucoes.txt", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "Você é o Alosa, assistente comercial do Rodrigo Aiosa."
+
+# --- INICIALIZAÇÃO ---
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
+
+if "tabela_dados" not in st.session_state:
+    st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
+
+# --- INTEGRAÇÃO COM IA ---
+def perguntar_ia(historico):
+    token = st.secrets.get("HF_TOKEN")
+    if not token: return "⚠️ HF_TOKEN não configurado."
+    API_URL = "https://router.huggingface.co/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    payload = {"model": "meta-llama/Llama-3.2-3B-Instruct", "messages": historico, "max_tokens": 1200, "temperature": 0.7}
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+        return response.json()["choices"][0]["message"]["content"] if response.status_code == 200 else "⚠️ Erro API."
+    except Exception: return "⚠️ Erro de conexão."
+
+# --- INTERFACE ---
+st.title("💬 Sou o Alosa, seu consultor estratégico...")
+
+for msg in st.session_state.messages:
+    if msg["role"] != "system":
+        with st.chat_message(msg["role"], avatar="👤" if msg["role"] == "user" else "✍️"):
+            st.markdown(msg["content"])
+
+if prompt := st.chat_input("Como posso ajudar seu negócio hoje?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user", avatar="👤"): st.markdown(prompt)
+
+    with st.chat_message("assistant", avatar="✍️"):
+        placeholder = st.empty()
+        with st.spinner("Analisando demanda..."):
+            resposta = perguntar_ia(st.session_state.messages)
+        
+        full_res = ""
+        for chunk in resposta.split(" "):
+            full_res += chunk + " "
+            time.sleep(0.01)
+            placeholder.markdown(full_res + "▌")
+        placeholder.markdown(full_res)
+
+    st.session_state.messages.append({"role": "assistant", "content": full_res})
+    
+    # SALVAR E PRESERVAR DADOS
+    nova_linha = pd.DataFrame([{"Data/Hora": datetime.now().strftime("%H:%M:%S"), "Pergunta": prompt, "Resposta": full_res}])
+    st.session_state.tabela_dados = pd.concat([st.session_state.tabela_dados, nova_linha], ignore_index=True)
+
+with st.sidebar:
+    st.subheader("📜 Painel de Gestão")
+    if st.button("Nova Conversa"):
+        st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
+        st.rerun()
+    st.write(f"Interações: {len(st.session_state.tabela_dados)}")
+    st.markdown("---")
+    wa_link = "https://wa.me/5511977019335?text=Oi,%20Rodrigo!%20Vim%20pelo%20Chat%20IA."
+    st.markdown(f"**WhatsApp Direto:** [(11) 97701-9335]({wa_link})")
+    st.markdown(f"**E-mail:** [rodrigoaiosa@gmail.com](mailto:rodrigoaiosa@gmail.com)")
