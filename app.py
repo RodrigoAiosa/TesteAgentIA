@@ -8,19 +8,21 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro", page_icon="✍️", layout="wide")
 
-# --- INJEÇÃO DE CSS (FOCO EM TEXTO PRETO E LEGIBILIDADE) ---
+# --- INJEÇÃO DE CSS (FOCO EM TEXTO PRETO E LEGIBILIDADE MÁXIMA) ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
     st.markdown(
         f"""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;700&display=swap');
 
         /* 1. OCULTAÇÃO DE INTERFACE DE SISTEMA */
         header, footer, #MainMenu {{visibility: hidden !important;}}
         [data-testid="stAppDeployButton"], [data-testid="manage-app-button"], 
         .stDeployButton, ._terminalButton_rix23_138 {{ display: none !important; }}
+
+        .stAppViewMain {{ margin-top: -60px; }}
 
         /* 2. BACKGROUND */
         .stApp {{
@@ -30,47 +32,48 @@ def apply_custom_style():
             background-attachment: fixed;
         }}
 
-        /* 3. TEXTOS EM PRETO (FORÇADO) */
-        /* Título Principal */
+        /* 3. TEXTOS EM PRETO (FORÇADO PARA LEGIBILIDADE) */
         h1 {{
             color: #000000 !important;
             font-family: 'EB Garamond', serif;
             font-weight: 700;
-            text-shadow: none !important; /* Removido shadow para clareza */
+            text-shadow: none !important;
         }}
 
         /* Mensagens do Chat */
         .stChatMessage {{
-            background-color: rgba(255, 248, 231, 0.9) !important; 
+            background-color: rgba(255, 248, 231, 0.95) !important; /* Mais sólido para ler melhor */
             border: 1px solid #8B4513;
             border-radius: 15px;
         }}
 
-        /* Força a cor PRETA em todos os parágrafos e textos do chat */
+        /* Força a cor PRETA em todos os textos de mensagens */
         .stChatMessage .stMarkdown p, 
         .stChatMessage [data-testid="stMarkdownContainer"] p,
-        .stChatMessage span {{
+        .stChatMessage span,
+        .stChatMessage code {{
             color: #000000 !important;
             font-family: 'EB Garamond', serif;
-            font-size: 1.25rem !important;
+            font-size: 1.3rem !important; /* Texto levemente maior */
             font-weight: 500 !important;
         }}
 
-        /* Balão do Usuário (Diferenciação leve no fundo, mas texto preto) */
+        /* Balão do Usuário */
         [data-testid="stChatMessageUser"] {{
-            background-color: rgba(210, 180, 140, 0.95) !important;
+            background-color: rgba(210, 180, 140, 1.0) !important; /* Totalmente opaco */
         }}
 
         /* 4. CAMPO DE ENTRADA (INPUT) */
-        /* Força o texto digitado a ser preto e visível */
+        /* Garante que o texto digitado e o placeholder sejam visíveis */
         .stChatInputContainer textarea {{
             color: #000000 !important;
             -webkit-text-fill-color: #000000 !important;
+            font-weight: 600 !important;
         }}
         
         .stChatInputContainer {{
-            background-color: rgba(255, 255, 255, 0.6) !important;
-            border: 1px solid #8B4513 !important;
+            background-color: rgba(255, 255, 255, 0.8) !important; /* Fundo do input mais claro */
+            border: 2px solid #8B4513 !important;
         }}
 
         /* 5. SIDEBAR */
@@ -91,7 +94,7 @@ if "tabela_dados" not in st.session_state:
 
 # --- FUNÇÃO DA IA (MEMÓRIA DE CURTO PRAZO) ---
 def perguntar_ia(historico):
-    # Janela de memória: enviamos apenas as últimas 8 interações
+    # Janela de memória: enviamos apenas as últimas 8 mensagens
     contexto = historico[-8:] if len(historico) > 8 else historico
     
     HF_TOKEN = os.getenv("HF_TOKEN")
@@ -109,20 +112,19 @@ def perguntar_ia(historico):
         response = requests.post(API_URL, headers=headers, json=payload)
         return response.json()["choices"][0]["message"]["content"]
     except:
-        return "⚠️ Ocorreu um erro ao redigir a resposta."
+        return "Desculpe, tive um problema ao redigir sua resposta."
 
 # --- INTERFACE ---
-st.title("💬 Sou o AIosa, seu assistente virtual...")
+st.title("💬 Sou o Alosa, seu assistente virtual...")
 
-# Exibe histórico com os novos estilos
+# Exibe histórico
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
 # --- PROCESSAMENTO ---
-if prompt := st.chat_input("Escreva sua dúvida aqui..."):
-    # Notificação Toast
-    st.toast("O AIosa está redigindo...", icon="✍️")
+if prompt := st.chat_input("Como posso ajudar?"):
+    st.toast("O Alosa está escrevendo...", icon="✍️")
     
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -132,7 +134,7 @@ if prompt := st.chat_input("Escreva sua dúvida aqui..."):
         placeholder = st.empty()
         full_res = ""
         
-        with st.spinner("Consultando arquivos..."):
+        with st.spinner("Consultando manuscritos..."):
             resposta = perguntar_ia(st.session_state.messages)
         
         for chunk in resposta.split(" "):
@@ -141,7 +143,7 @@ if prompt := st.chat_input("Escreva sua dúvida aqui..."):
             placeholder.markdown(full_res + "▌")
         placeholder.markdown(full_res)
 
-    # Salvamento e Preservação
+    # Salvamento de Dados
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     nova_linha = pd.DataFrame([{
         "Data/Hora": datetime.now().strftime("%H:%M:%S"), 
