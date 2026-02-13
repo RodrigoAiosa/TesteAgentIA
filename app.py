@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro - Rodrigo Aiosa", page_icon="✍️", layout="wide")
 
-# --- INJEÇÃO DE CSS (FOCO EM PRETO ABSOLUTO E REMOÇÃO DE RUIDO VISUAL) ---
+# --- INJEÇÃO DE CSS (FOCO EM PRETO ABSOLUTO E ESTILO EXECUTIVO) ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
@@ -50,7 +50,7 @@ def apply_custom_style():
             font-weight: 600 !important;
         }}
 
-        /* 5. BALÕES DE MENSAGEM (SÓLIDOS PARA LEITURA) */
+        /* 5. BALÕES DE MENSAGEM */
         .stChatMessage {{
             background-color: rgba(255, 250, 240, 0.98) !important; 
             border: 2px solid #5D4037;
@@ -84,17 +84,17 @@ apply_custom_style()
 # --- FUNÇÃO PARA CARREGAR O CONTEXTO DO ARQUIVO .TXT ---
 def carregar_contexto():
     try:
-        # Carrega as instruções que você salvou no GitHub
+        # Carrega as instruções completas de LLM salvas no GitHub
         with open("instrucoes.txt", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
         return "Você é o Alosa, assistente virtual do Rodrigo Aiosa."
 
-# --- INICIALIZAÇÃO E MEMÓRIA ---
+# --- INICIALIZAÇÃO E PRESERVAÇÃO DE DADOS ---
 if "messages" not in st.session_state:
-    contexto = carregar_contexto()
-    # Inicia com a mensagem de sistema (invisível ao usuário no chat)
-    st.session_state.messages = [{"role": "system", "content": contexto}]
+    contexto_instrucoes = carregar_contexto()
+    # Inicia com a mensagem de sistema (o LLM lê, mas o usuário não vê no chat)
+    st.session_state.messages = [{"role": "system", "content": contexto_instrucoes}]
 
 if "tabela_dados" not in st.session_state:
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
@@ -103,14 +103,14 @@ if "tabela_dados" not in st.session_state:
 def perguntar_ia(historico):
     token = st.secrets.get("HF_TOKEN")
     if not token:
-        return "⚠️ Erro: HF_TOKEN não configurado nas Secrets."
+        return "⚠️ Erro: HF_TOKEN não configurado nas Secrets do Streamlit Cloud."
 
     API_URL = "https://router.huggingface.co/v1/chat/completions"
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     
     payload = {
         "model": "meta-llama/Llama-3.2-3B-Instruct",
-        "messages": historico, # Envia todo o contexto, incluindo o system prompt
+        "messages": historico, # Inclui o System Prompt de instrucoes.txt
         "max_tokens": 800,
         "temperature": 0.7
     }
@@ -127,7 +127,7 @@ def perguntar_ia(historico):
 # --- INTERFACE PRINCIPAL ---
 st.title("💬 Sou o Alosa, seu assistente virtual...")
 
-# Exibição do Histórico (Filtra a mensagem 'system' para não aparecer no balão)
+# Exibição do Histórico (Filtra a mensagem 'system' para manter a imersão)
 for msg in st.session_state.messages:
     if msg["role"] != "system":
         icone = "👤" if msg["role"] == "user" else "✍️"
@@ -136,7 +136,7 @@ for msg in st.session_state.messages:
 
 # --- PROCESSAMENTO DO PROMPT ---
 if prompt := st.chat_input("Como posso ajudar hoje?"):
-    # Adiciona pergunta do usuário ao estado
+    # Adiciona pergunta do usuário à memória da sessão
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
@@ -152,16 +152,17 @@ if prompt := st.chat_input("Como posso ajudar hoje?"):
             st.error(resposta)
             full_res = resposta
         else:
-            # Efeito de digitação para uma experiência elegante
+            # Efeito de digitação elegante
             for chunk in resposta.split(" "):
                 full_res += chunk + " "
                 time.sleep(0.015)
                 placeholder.markdown(full_res + "▌")
             placeholder.markdown(full_res)
 
-    # Salvamento na Memória da Sessão e na Tabela de Dados (Preservação)
+    # Adiciona resposta da IA à memória
     st.session_state.messages.append({"role": "assistant", "content": full_res})
     
+    # Preservação de dados na tabela (Sempre salvando novos dados e mantendo os existentes)
     nova_linha = pd.DataFrame([{
         "Data/Hora": datetime.now().strftime("%H:%M:%S"), 
         "Pergunta": prompt, 
@@ -172,14 +173,15 @@ if prompt := st.chat_input("Como posso ajudar hoje?"):
 # --- SIDEBAR ---
 with st.sidebar:
     st.subheader("📜 Painel de Controle")
+    
     if st.button("Limpar Conversa"):
-        # Reseta as mensagens mas mantém o conhecimento do .txt
+        # Reseta o chat mas recarrega as instruções do .txt
         st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
         st.rerun()
     
+    st.markdown("---")
     st.write(f"Interações registradas: {len(st.session_state.tabela_dados)}")
     
-    st.markdown("---")
-    # Link direto para o seu WhatsApp com a mensagem escolhida
-    whatsapp_url = "https://wa.me/5511977019335?text=Oi,%20Rodrigo!%20Vi%20sua%20solução%20de%20IA%20no%20site%20e%20gostaria%20de%20agendar%20uma%20breve%20conversa%20para%20tirar%20algumas%20dúvidas."
-    st.markdown(f"[**📱 Falar com Rodrigo no WhatsApp**]({whatsapp_url})")
+    # Link direto para o seu WhatsApp com a mensagem personalizada
+    wa_msg = "Oi,%20Rodrigo!%20Vi%20sua%20solução%20de%20IA%20no%20site%20e%20gostaria%20de%20agendar%20uma%20breve%20conversa%20para%20tirar%20algumas%20dúvidas."
+    st.markdown(f"[**📱 Falar com Rodrigo no WhatsApp**](https://wa.me/5511977019335?text={wa_msg})")
