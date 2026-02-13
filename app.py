@@ -6,9 +6,9 @@ import time
 from datetime import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Chat IA Pro", page_icon="✍️", layout="wide")
+st.set_page_config(page_title="Chat IA Pro - Rodrigo Aiosa", page_icon="✍️", layout="wide")
 
-# --- INJEÇÃO DE CSS ---
+# --- INJEÇÃO DE CSS (FOCO EM PRETO ABSOLUTO E ESTILO MANUSCRITO) ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
@@ -17,9 +17,11 @@ def apply_custom_style():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600;800&display=swap');
 
+        /* 1. OCULTAR INTERFACE PADRÃO */
         header, footer, #MainMenu {{visibility: hidden !important;}}
         [data-testid="stAppDeployButton"], .stDeployButton {{ display: none !important; }}
 
+        /* 2. BACKGROUND */
         .stApp {{
             background-image: url("{img_url}");
             background-size: cover;
@@ -27,11 +29,13 @@ def apply_custom_style():
             background-attachment: fixed;
         }}
 
+        /* 3. REMOVER TEXTOS DOS AVATARES */
         [data-testid="stChatMessageAvatarContainer"] div {{
             color: transparent !important;
             font-size: 0px !important;
         }}
 
+        /* 4. TEXTOS EM PRETO ABSOLUTO */
         h1, h2, h3, p, span, li, div {{
             font-family: 'EB Garamond', serif !important;
         }}
@@ -46,6 +50,7 @@ def apply_custom_style():
             font-weight: 600 !important;
         }}
 
+        /* 5. BALÕES DE MENSAGEM */
         .stChatMessage {{
             background-color: rgba(255, 250, 240, 0.98) !important; 
             border: 2px solid #5D4037;
@@ -57,6 +62,7 @@ def apply_custom_style():
             background-color: #E0C9A6 !important; 
         }}
 
+        /* 6. CAMPO DE ENTRADA */
         .stChatInputContainer textarea {{ 
             color: #000000 !important; 
             font-weight: 600 !important; 
@@ -74,20 +80,18 @@ def apply_custom_style():
 
 apply_custom_style()
 
-# --- CARREGAR CONHECIMENTO EXTERNO ---
+# --- FUNÇÃO CARREGAR CONHECIMENTO (CÉREBRO TXT) ---
 def carregar_contexto():
     try:
-        # Tenta ler o arquivo que você criará no GitHub
         with open("instrucoes.txt", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "Você é um assistente prestativo."
+        return "Você é o Alosa, assistente do Rodrigo Aiosa."
 
 # --- INICIALIZAÇÃO E MEMÓRIA ---
 if "messages" not in st.session_state:
-    # Inicia o chat com o conhecimento do seu arquivo .txt
-    contexto = carregar_contexto()
-    st.session_state.messages = [{"role": "system", "content": contexto}]
+    contexto_inicial = carregar_contexto()
+    st.session_state.messages = [{"role": "system", "content": contexto_inicial}]
 
 if "tabela_dados" not in st.session_state:
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
@@ -103,7 +107,7 @@ def perguntar_ia(historico):
     
     payload = {
         "model": "meta-llama/Llama-3.2-3B-Instruct",
-        "messages": historico, # Enviamos o histórico completo (incluindo o system prompt)
+        "messages": historico, # Envia o histórico com o system prompt
         "max_tokens": 800,
         "temperature": 0.7
     }
@@ -120,7 +124,7 @@ def perguntar_ia(historico):
 # --- INTERFACE PRINCIPAL ---
 st.title("💬 Sou o Alosa, seu assistente virtual...")
 
-# Exibição do Histórico (Pulando a mensagem de sistema para não poluir o chat)
+# Exibição do Histórico (Ocultando a instrução de sistema)
 for msg in st.session_state.messages:
     if msg["role"] != "system":
         icone = "👤" if msg["role"] == "user" else "✍️"
@@ -144,6 +148,7 @@ if prompt := st.chat_input("Como posso ajudar hoje?"):
             st.error(resposta)
             full_res = resposta
         else:
+            # Efeito de digitação
             for chunk in resposta.split(" "):
                 full_res += chunk + " "
                 time.sleep(0.015)
