@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro - Rodrigo Aiosa", page_icon="✍️", layout="wide")
 
-# --- INJEÇÃO DE CSS (FOCO EM PRETO ABSOLUTO E ESTILO MANUSCRITO) ---
+# --- INJEÇÃO DE CSS (FOCO EM PRETO ABSOLUTO E REMOÇÃO DE RUIDO VISUAL) ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
@@ -35,7 +35,7 @@ def apply_custom_style():
             font-size: 0px !important;
         }}
 
-        /* 4. TEXTOS EM PRETO ABSOLUTO */
+        /* 4. TEXTOS EM PRETO ABSOLUTO (#000000) */
         h1, h2, h3, p, span, li, div {{
             font-family: 'EB Garamond', serif !important;
         }}
@@ -50,7 +50,7 @@ def apply_custom_style():
             font-weight: 600 !important;
         }}
 
-        /* 5. BALÕES DE MENSAGEM */
+        /* 5. BALÕES DE MENSAGEM (SÓLIDOS PARA LEITURA) */
         .stChatMessage {{
             background-color: rgba(255, 250, 240, 0.98) !important; 
             border: 2px solid #5D4037;
@@ -58,11 +58,12 @@ def apply_custom_style():
             margin-bottom: 10px;
         }}
 
+        /* Balão do Usuário */
         [data-testid="stChatMessageUser"] {{ 
             background-color: #E0C9A6 !important; 
         }}
 
-        /* 6. CAMPO DE ENTRADA */
+        /* 6. CAMPO DE ENTRADA (INPUT) */
         .stChatInputContainer textarea {{ 
             color: #000000 !important; 
             font-weight: 600 !important; 
@@ -80,18 +81,20 @@ def apply_custom_style():
 
 apply_custom_style()
 
-# --- FUNÇÃO CARREGAR CONHECIMENTO (CÉREBRO TXT) ---
+# --- FUNÇÃO PARA CARREGAR O CONTEXTO DO ARQUIVO .TXT ---
 def carregar_contexto():
     try:
+        # Carrega as instruções que você salvou no GitHub
         with open("instrucoes.txt", "r", encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError:
-        return "Você é o Alosa, assistente do Rodrigo Aiosa."
+        return "Você é o Alosa, assistente virtual do Rodrigo Aiosa."
 
 # --- INICIALIZAÇÃO E MEMÓRIA ---
 if "messages" not in st.session_state:
-    contexto_inicial = carregar_contexto()
-    st.session_state.messages = [{"role": "system", "content": contexto_inicial}]
+    contexto = carregar_contexto()
+    # Inicia com a mensagem de sistema (invisível ao usuário no chat)
+    st.session_state.messages = [{"role": "system", "content": contexto}]
 
 if "tabela_dados" not in st.session_state:
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
@@ -107,7 +110,7 @@ def perguntar_ia(historico):
     
     payload = {
         "model": "meta-llama/Llama-3.2-3B-Instruct",
-        "messages": historico, # Envia o histórico com o system prompt
+        "messages": historico, # Envia todo o contexto, incluindo o system prompt
         "max_tokens": 800,
         "temperature": 0.7
     }
@@ -124,7 +127,7 @@ def perguntar_ia(historico):
 # --- INTERFACE PRINCIPAL ---
 st.title("💬 Sou o Alosa, seu assistente virtual...")
 
-# Exibição do Histórico (Ocultando a instrução de sistema)
+# Exibição do Histórico (Filtra a mensagem 'system' para não aparecer no balão)
 for msg in st.session_state.messages:
     if msg["role"] != "system":
         icone = "👤" if msg["role"] == "user" else "✍️"
@@ -133,6 +136,7 @@ for msg in st.session_state.messages:
 
 # --- PROCESSAMENTO DO PROMPT ---
 if prompt := st.chat_input("Como posso ajudar hoje?"):
+    # Adiciona pergunta do usuário ao estado
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="👤"):
         st.markdown(prompt)
@@ -148,15 +152,16 @@ if prompt := st.chat_input("Como posso ajudar hoje?"):
             st.error(resposta)
             full_res = resposta
         else:
-            # Efeito de digitação
+            # Efeito de digitação para uma experiência elegante
             for chunk in resposta.split(" "):
                 full_res += chunk + " "
                 time.sleep(0.015)
                 placeholder.markdown(full_res + "▌")
             placeholder.markdown(full_res)
 
-    # Salvamento e Preservação de Dados
+    # Salvamento na Memória da Sessão e na Tabela de Dados (Preservação)
     st.session_state.messages.append({"role": "assistant", "content": full_res})
+    
     nova_linha = pd.DataFrame([{
         "Data/Hora": datetime.now().strftime("%H:%M:%S"), 
         "Pergunta": prompt, 
@@ -168,6 +173,13 @@ if prompt := st.chat_input("Como posso ajudar hoje?"):
 with st.sidebar:
     st.subheader("📜 Painel de Controle")
     if st.button("Limpar Conversa"):
+        # Reseta as mensagens mas mantém o conhecimento do .txt
         st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
         st.rerun()
+    
     st.write(f"Interações registradas: {len(st.session_state.tabela_dados)}")
+    
+    st.markdown("---")
+    # Link direto para o seu WhatsApp com a mensagem escolhida
+    whatsapp_url = "https://wa.me/5511977019335?text=Oi,%20Rodrigo!%20Vi%20sua%20solução%20de%20IA%20no%20site%20e%20gostaria%20de%20agendar%20uma%20breve%20conversa%20para%20tirar%20algumas%20dúvidas."
+    st.markdown(f"[**📱 Falar com Rodrigo no WhatsApp**]({whatsapp_url})")
