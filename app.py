@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Chat IA Pro - Rodrigo Aiosa", page_icon="✍️", layout="wide")
 
-# --- INJEÇÃO DE CSS (FORÇANDO PRETO ABSOLUTO) ---
+# --- INJEÇÃO DE CSS (PRETO ABSOLUTO E LEGIBILIDADE) ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     st.markdown(f"""
@@ -25,13 +25,12 @@ def apply_custom_style():
             background-attachment: fixed;
         }}
 
-        /* FORÇAR PRETO EM TODOS OS ELEMENTOS POSSÍVEIS */
+        /* FORÇAR PRETO EM TODOS OS TEXTOS */
         h1, h2, h3, p, span, li, div, label, .stMarkdown, [data-testid="stChatMessageContent"] {{
             color: #000000 !important;
             font-family: 'EB Garamond', serif !important;
         }}
 
-        /* Estilo específico para os balões e textos internos */
         .stChatMessage .stMarkdown p, 
         .stChatMessage .stMarkdown li,
         .stChatMessage span {{
@@ -40,7 +39,7 @@ def apply_custom_style():
             font-weight: 700 !important;
         }}
 
-        /* Links em azul destacado */
+        /* Links destacados em azul */
         .stChatMessage a {{
             color: #0000FF !important;
             text-decoration: underline !important;
@@ -102,7 +101,7 @@ if prompt := st.chat_input("Como posso ajudar hoje?"):
 
     with st.chat_message("assistant", avatar="✍️"):
         placeholder = st.empty()
-        with st.spinner("Consultando manuscritos..."):
+        with st.spinner("Processando..."):
             resposta = perguntar_ia(st.session_state.messages)
         
         full_res = ""
@@ -122,7 +121,8 @@ with st.sidebar:
     if st.button("Limpar Conversa"):
         st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
         st.rerun()
-    st.write(f"Interações: {len(st.session_state.tabela_dados)}")
+    st.write(f"Interações registradas: {len(st.session_state.tabela_dados)}")
     st.markdown("---")
     wa_link = "https://wa.me/5511977019335?text=Oi,%20Rodrigo!%20Vim%20pelo%20Chat%20IA."
     st.markdown(f"**WhatsApp Direto:** [(11) 97701-9335]({wa_link})")
+    st.markdown(f"**E-mail:** [contato@aiosa.com.br](mailto:contato@aiosa.com.br)")
