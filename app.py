@@ -102,7 +102,7 @@ if prompt := st.chat_input("Como posso ajudar seu negócio hoje?"):
 
     with st.chat_message("assistant", avatar="✍️"):
         placeholder = st.empty()
-        with st.spinner("Analisando demanda..."):
+        with st.spinner("Processando..."):
             resposta = perguntar_ia(st.session_state.messages)
         
         full_res = ""
