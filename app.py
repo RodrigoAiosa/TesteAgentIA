@@ -4,72 +4,81 @@ import os
 import pandas as pd
 import time
 from datetime import datetime
+import io
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
-# Nota: Para arquivos de 100MB, se rodar localmente, use: streamlit run app.py --server.maxUploadSize 100
 st.set_page_config(page_title="Chat IA Pro", page_icon="💬", layout="wide")
 
-# --- INJEÇÃO DE CSS (Background, Ocultação e Estilo) ---
+# --- INJEÇÃO DE CSS AVANÇADO ---
 def apply_custom_style():
     img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     
     st.markdown(
         f"""
         <style>
-        /* OCULTAÇÃO DO BOTÃO MANAGE APP E COMPONENTES DE SISTEMA */
+        /* 1. OCULTAÇÃO DE INTERFACE (Botão Manage App e Menus) */
         header, footer, #MainMenu {{visibility: hidden !important;}}
-        [data-testid="manage-app-button"], 
-        ._terminalButton_rix23_138,
-        [data-testid="stAppDeployButton"],
-        .stDeployButton {{
+        [data-testid="stAppDeployButton"], [data-testid="manage-app-button"], .stDeployButton {{
             display: none !important;
-            visibility: hidden !important;
         }}
 
-        /* BACKGROUND PROPORCIONAL */
+        /* 2. BACKGROUND E TELA */
         .stApp {{
             background-image: url("{img_url}");
             background-size: cover;
             background-position: center;
-            background-repeat: no-repeat;
             background-attachment: fixed;
         }}
 
-        /* TÍTULO EM BRANCO */
-        h1 {{
-            color: #FFFFFF !important;
-            text-shadow: 2px 2px 10px rgba(0,0,0,0.9);
-            font-family: 'serif';
+        /* 3. POSICIONAMENTO DO CLIPE DE ANEXO */
+        /* Estilizamos o uploader para parecer um pequeno ícone de clipe flutuante */
+        .stFileUploader {{
+            position: fixed;
+            bottom: 35px;
+            left: 55px;
+            width: 50px;
+            z-index: 9999;
+        }}
+        .stFileUploader section {{
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
+        }}
+        .stFileUploader label {{ display: none !important; }}
+        
+        /* Botão do Clipe */
+        .stFileUploader button {{
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            border: 1px solid rgba(255,255,255,0.4) !important;
+            border-radius: 50% !important;
+            height: 40px !important;
+            width: 40px !important;
+            color: white !important;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.3);
         }}
 
-        /* CHAT ALTERNADO */
+        /* Ajuste do campo de input para não bater no clipe */
+        [data-testid="stChatInput"] {{
+            padding-left: 60px !important;
+        }}
+
+        /* 4. MENSAGENS DO CHAT */
         .stChatMessage {{
-            background-color: rgba(255, 248, 231, 0.8) !important; 
+            background-color: rgba(255, 248, 231, 0.85) !important; 
             border-radius: 15px;
             border: 1px solid #8B4513;
-            margin-bottom: 15px;
-            max-width: 80%;
+            color: #000 !important;
         }}
         [data-testid="stChatMessageUser"] {{
+            background-color: rgba(210, 180, 140, 0.95) !important;
             margin-left: auto !important;
             flex-direction: row-reverse !important;
-            background-color: rgba(210, 180, 140, 0.9) !important;
         }}
-        [data-testid="stChatMessageAssistant"] {{
-            margin-right: auto !important;
-        }}
-        .stChatMessage p {{
-            color: #000000 !important;
-            font-weight: 500;
-        }}
+        .stChatMessage p {{ color: black !important; font-weight: 500; }}
 
-        /* SIDEBAR */
-        [data-testid="stSidebar"] {{
-            background-color: rgba(45, 28, 25, 0.98) !important; 
-        }}
-        [data-testid="stSidebar"] .stMarkdown p, [data-testid="stSidebar"] h3 {{
-            color: #D2B48C !important;
-        }}
+        /* 5. SIDEBAR */
+        [data-testid="stSidebar"] {{ background-color: rgba(45, 28, 25, 0.98) !important; }}
+        [data-testid="stSidebar"] * {{ color: #D2B48C !important; }}
         </style>
         """,
         unsafe_allow_html=True
@@ -77,91 +86,87 @@ def apply_custom_style():
 
 apply_custom_style()
 
-# --- INICIALIZAÇÃO DE ESTADOS ---
+# --- INICIALIZAÇÃO DE DADOS (Preservando Histórico) ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "tabela_dados" not in st.session_state:
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
 
-# --- FUNÇÃO DE CONSULTA À IA ---
-def perguntar_ia(mensagens):
-    HF_TOKEN = os.getenv("HF_TOKEN")
-    API_URL = "https://router.huggingface.co/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
-    payload = {
-        "model": "meta-llama/Llama-3.2-3B-Instruct",
-        "messages": mensagens,
-        "max_tokens": 1000,
-        "temperature": 0.5
-    }
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload)
-        return response.json()["choices"][0]["message"]["content"]
-    except:
-        return "Desculpe, tive um problema ao processar sua análise."
+# --- ÁREA DE ANEXO (O Ícone de Clipe) ---
+# O emoji 📎 funciona como o selo do botão de upload
+arquivo_subido = st.file_uploader("📎", type=["csv", "xlsx"], key="upload_clipe")
 
-# --- INTERFACE PRINCIPAL ---
+contexto_excel = ""
+if arquivo_subido:
+    try:
+        if arquivo_subido.name.endswith('.csv'):
+            df = pd.read_csv(arquivo_subido)
+        else:
+            df = pd.read_excel(arquivo_subido)
+        
+        st.info(f"📁 Arquivo '{arquivo_subido.name}' carregado. (Ex: {df.shape[0]} linhas)")
+        # Criamos um resumo para a IA entender a base
+        contexto_excel = f"\n[Contexto da Planilha: {arquivo_subido.name}]\nColunas: {list(df.columns)}\nDados:\n{df.head(3).to_string()}"
+    except Exception as e:
+        st.error(f"Erro ao ler arquivo: {e}")
+
+# --- TÍTULO E CHAT ---
 st.title("💬 Sou o AIosa, seu assistente virtual...")
 
-# Exibição do histórico
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# --- BARRA LATERAL (UPLOAD E CONFIGS) ---
-with st.sidebar:
-    st.subheader("Análise de Dados")
-    arquivo_subido = st.file_uploader("Envie sua planilha (CSV ou XLSX)", type=["csv", "xlsx"])
+# --- LÓGICA DE ENVIO ---
+if prompt := st.chat_input("Como posso ajudar?"):
     
-    contexto_arquivo = ""
-    if arquivo_subido is not None:
-        try:
-            if arquivo_subido.name.endswith('.csv'):
-                df_analise = pd.read_csv(arquivo_subido)
-            else:
-                df_analise = pd.read_excel(arquivo_subido)
-            
-            st.success("Arquivo carregado com sucesso!")
-            st.write(f"Linhas: {df_analise.shape[0]} | Colunas: {df_analise.shape[1]}")
-            
-            # Criar um resumo dos dados para a IA
-            resumo_dados = df_analise.head(5).to_string()
-            contexto_arquivo = f"\n\nContexto do arquivo enviado:\n{resumo_dados}"
-        except Exception as e:
-            st.error(f"Erro ao ler arquivo: {e}")
-
-    st.divider()
-    if st.button("Limpar Chat"):
-        st.session_state.messages = []
-        st.rerun()
-
-# --- INPUT DO CHAT ---
-if prompt := st.chat_input("O que deseja analisar na base?"):
-    # Adicionar contexto do arquivo se existir
-    prompt_final = prompt + contexto_arquivo if contexto_arquivo else prompt
+    # Combinar pergunta com os dados da planilha se houver anexo
+    prompt_com_dados = f"{prompt} {contexto_excel}" if contexto_excel else prompt
     
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Analisando dados..."):
-            # Enviamos o histórico + o novo prompt com o contexto da planilha
-            resposta = perguntar_ia(st.session_state.messages + [{"role": "user", "content": prompt_final}])
+        placeholder = st.empty()
+        full_response = ""
+        
+        with st.spinner("Analisando manuscritos e dados..."):
+            # Configuração da API
+            HF_TOKEN = os.getenv("HF_TOKEN")
+            API_URL = "https://router.huggingface.co/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
             
-            placeholder = st.empty()
-            full_res = ""
-            for chunk in resposta.split(" "):
-                full_res += chunk + " "
-                time.sleep(0.02)
-                placeholder.markdown(full_res + "▌")
-            placeholder.markdown(full_res)
+            payload = {
+                "model": "meta-llama/Llama-3.2-3B-Instruct",
+                "messages": st.session_state.messages[:-1] + [{"role": "user", "content": prompt_com_dados}],
+                "max_tokens": 1000,
+                "temperature": 0.5
+            }
+            
+            try:
+                response = requests.post(API_URL, headers=headers, json=payload)
+                resposta_ia = response.json()["choices"][0]["message"]["content"]
+            except:
+                resposta_ia = "⚠️ Erro ao processar. Verifique sua conexão ou o arquivo."
 
-    # Salvamento e preservação de dados
-    st.session_state.messages.append({"role": "assistant", "content": full_res})
-    nova_interacao = pd.DataFrame([{
-        "Data/Hora": datetime.now().strftime("%H:%M:%S"),
-        "Pergunta": prompt,
-        "Resposta": full_res
-    }])
-    st.session_state.tabela_dados = pd.concat([st.session_state.tabela_dados, nova_interacao], ignore_index=True)
+        # Efeito de digitação
+        for chunk in resposta_ia.split(" "):
+            full_response += chunk + " "
+            time.sleep(0.03)
+            placeholder.markdown(full_response + "▌")
+        placeholder.markdown(full_response)
+
+    # Salvamento obrigatório na tabela e preservação do estado
+    st.session_state.messages.append({"role": "assistant", "content": full_response})
+    nova_linha = pd.DataFrame([{"Data/Hora": datetime.now().strftime("%H:%M:%S"), "Pergunta": prompt, "Resposta": full_response}])
+    st.session_state.tabela_dados = pd.concat([st.session_state.tabela_dados, nova_linha], ignore_index=True)
+
+# --- MENU LATERAL ---
+with st.sidebar:
+    st.subheader("Configurações")
+    if st.button("Limpar Chat"):
+        st.session_state.messages = []
+        st.rerun()
+    st.divider()
+    st.caption(f"Interações salvas: {len(st.session_state.tabela_dados)}")
