@@ -8,9 +8,8 @@ from datetime import datetime
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="Alosa IA - Rodrigo Aiosa", page_icon="✍️", layout="wide")
 
-# --- INJEÇÃO DE CSS (PRETO ABSOLUTO) ---
+# --- INJEÇÃO DE CSS (PRETO ABSOLUTO E SEM BACKGROUND IMAGE) ---
 def apply_custom_style():
-    img_url = "https://raw.githubusercontent.com/rodrigoaiosa/TesteAgentIA/main/AIOSA_LOGO.jpg"
     st.markdown(f"""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@600;800&display=swap');
@@ -18,11 +17,9 @@ def apply_custom_style():
         header, footer, #MainMenu {{visibility: hidden !important;}}
         [data-testid="stAppDeployButton"] {{ display: none !important; }}
 
+        /* Fundo em cor sólida (creme suave) para contraste com texto preto */
         .stApp {{
-            background-image: url("{img_url}");
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+            background-color: #FDFCF0;
         }}
 
         /* FORÇAR PRETO EM TODOS OS TEXTOS */
