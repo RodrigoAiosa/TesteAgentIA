@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------
-# CSS GLOBAL (FORÇANDO TEXTO PRETO)
+# CSS GLOBAL
 # ---------------------------------------------------
 def apply_custom_style():
     st.markdown("""
@@ -25,12 +25,11 @@ def apply_custom_style():
             background-color: #ECE5DD;
         }
 
+        /* TEXTO PRETO GLOBAL */
         html, body, p, div, span, label,
         h1, h2, h3, h4, h5, h6,
         li, strong, em, small,
-        .stMarkdown, .stText,
-        .stChatMessageContent,
-        textarea, input {
+        .stMarkdown, .stText {
             color: #000000 !important;
         }
 
@@ -38,15 +37,19 @@ def apply_custom_style():
             color: #000000 !important;
         }
 
+        /* INPUT DO CHAT */
+        [data-testid="stChatInput"] textarea {
+            background-color: #2b2b2b !important;
+            color: #FFFFFF !important;
+            border-radius: 12px;
+            padding: 10px;
+        }
+
         textarea::placeholder {
-            color: #000000 !important;
-            opacity: 1 !important;
+            color: #CCCCCC !important;
         }
 
-        button {
-            color: #000000 !important;
-        }
-
+        /* BOLHAS WHATSAPP */
         .chat-bubble {
             padding: 12px 14px;
             border-radius: 10px;
@@ -94,7 +97,7 @@ def hora_brasil():
     return datetime.now(brasil_tz).strftime("%H:%M")
 
 # ---------------------------------------------------
-# CONTEXTO DO ASSISTENTE
+# CONTEXTO
 # ---------------------------------------------------
 def carregar_contexto():
     try:
@@ -117,7 +120,7 @@ if "tabela_dados" not in st.session_state:
     )
 
 # ---------------------------------------------------
-# FUNÇÃO IA
+# IA
 # ---------------------------------------------------
 def perguntar_ia(historico):
     token = st.secrets.get("HF_TOKEN")
@@ -152,7 +155,7 @@ def perguntar_ia(historico):
 st.title("💬 Alosa — Consultor Estratégico IA")
 
 # ---------------------------------------------------
-# CHAT RENDER
+# CHAT
 # ---------------------------------------------------
 for msg in st.session_state.messages:
     if msg["role"] == "system":
@@ -220,17 +223,6 @@ if prompt := st.chat_input("Digite sua mensagem..."):
         {"role": "assistant", "content": full_res}
     )
 
-    nova_linha = pd.DataFrame([{
-        "Data/Hora": hora_brasil(),
-        "Pergunta": prompt,
-        "Resposta": full_res
-    }])
-
-    st.session_state.tabela_dados = pd.concat(
-        [st.session_state.tabela_dados, nova_linha],
-        ignore_index=True
-    )
-
 # ---------------------------------------------------
 # SIDEBAR
 # ---------------------------------------------------
@@ -243,10 +235,4 @@ with st.sidebar:
         ]
         st.rerun()
 
-    st.write(f"Interações: {len(st.session_state.tabela_dados)}")
-
-    st.markdown("---")
-
-    wa_link = "https://wa.me/5511977019335?text=Oi,%20Rodrigo!%20Vim%20pelo%20Chat%20IA."
-    st.markdown(f"**WhatsApp:** [(11) 97701-9335]({wa_link})")
-    st.markdown("**E-mail:** rodrigoaiosa@gmail.com")
+    st.write(f"Interações: {len(st.session_state.messages)-1}")
