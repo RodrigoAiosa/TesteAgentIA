@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------
-# CSS WHATSAPP WEB
+# CSS WHATSAPP STYLE
 # ---------------------------------------------------
 st.markdown("""
 <style>
@@ -29,7 +29,7 @@ h1, h2, h3, h4, h5, h6 {
     color: #000000 !important;
 }
 
-/* ÁREA DO CHAT */
+/* CHAT */
 .chat-container {
     display: flex;
     flex-direction: column;
@@ -135,7 +135,7 @@ def perguntar_ia(historico):
 st.title("💬 Alosa — Assistente IA")
 
 # ---------------------------------------------------
-# CHAT (ORDEM CORRETA)
+# CHAT
 # ---------------------------------------------------
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
@@ -160,11 +160,9 @@ for msg in st.session_state.messages:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# INPUT
+# GERAR RESPOSTA DA IA
 # ---------------------------------------------------
-if prompt := st.chat_input("Digite uma mensagem"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
+if st.session_state.messages[-1]["role"] == "user":
     with st.spinner("Digitando..."):
         resposta = perguntar_ia(st.session_state.messages)
 
@@ -194,9 +192,20 @@ if prompt := st.chat_input("Digite uma mensagem"):
         unsafe_allow_html=True
     )
 
-    st.session_state.messages.append(
-        {"role": "assistant", "content": texto}
-    )
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": texto
+    })
+
+# ---------------------------------------------------
+# INPUT
+# ---------------------------------------------------
+if prompt := st.chat_input("Digite uma mensagem"):
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
+    st.rerun()
 
 # ---------------------------------------------------
 # SIDEBAR
