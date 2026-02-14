@@ -14,43 +14,47 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------
-# CSS WHATSAPP STYLE (REMOÇÃO TOTAL DE RODAPÉ)
+# CSS WHATSAPP STYLE (REMOÇÃO AGRESSIVA DE RODAPÉ E FAIXA DE INPUT)
 # ---------------------------------------------------
 st.markdown("""
 <style>
-/* ESCONDER HEADER, RODAPÉ E MENU PADRÃO */
+/* 1. ESCONDER ELEMENTOS NATIVOS */
 header {visibility: hidden;}
 footer {visibility: hidden;}
 #MainMenu {visibility: hidden;}
 [data-testid="stStatusWidget"] {visibility: hidden;}
-
-/* REMOVER A MARCA D'ÁGUA 'MADE WITH STREAMLIT' */
-.viewerBadge_container__1QS1n {display: none !important;}
 .stAppDeployButton {display: none !important;}
 
-/* AJUSTE PARA O CONTEÚDO NÃO FICAR COLADO NO TOPO SEM O HEADER */
-.block-container {
-    padding-top: 2rem;
-    padding-bottom: 0rem;
+/* 2. REMOVER O FUNDO ESCURO DA ÁREA DE INPUT (O "RODAPÉ" QUE VOCÊ VIU) */
+[data-testid="stChatInput"] {
+    background-color: transparent !important;
+    padding-bottom: 20px !important;
 }
 
+/* 3. AJUSTAR O FUNDO GERAL */
 .stApp {
     background-color: #ECE5DD;
 }
 
-/* TEXTO PRETO NAS BOLHAS */
-html, body, p, div, span, label,
-h1, h2, h3, h4, h5, h6 {
+/* 4. ESTILIZAR A CAIXA DE TEXTO PARA NÃO PARECER UM BLOCO PRETO */
+[data-testid="stChatInput"] textarea {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    border-radius: 20px !important;
+    border: 1px solid #CCCCCC !important;
+}
+
+/* 5. TEXTO PRETO NAS BOLHAS E GERAL */
+html, body, p, div, span, label, h1, h2, h3, h4, h5, h6 {
     color: #000000 !important;
 }
 
 .chat-container {
     display: flex;
     flex-direction: column;
-    padding-bottom: 100px;
+    padding-bottom: 50px;
 }
 
-/* DISTÂNCIA ENTRE AS CAIXAS DE MENSAGENS */
 .bubble {
     padding: 10px 14px;
     border-radius: 8px;
@@ -81,17 +85,9 @@ h1, h2, h3, h4, h5, h6 {
     color: #666 !important;
 }
 
-/* CAIXA DE TEXTO DO USUÁRIO (#262730) */
-[data-testid="stChatInput"] textarea {
-    background-color: #262730 !important;
-    color: #FFFFFF !important;
-    border-radius: 20px;
-    border: 1px solid #3e404b !important;
-    padding-left: 20px !important;
-}
-
-textarea::placeholder {
-    color: #BBBBBB !important;
+/* REMOVER ESPAÇAMENTOS EXTRAS NO TOPO */
+.block-container {
+    padding-top: 1rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -104,7 +100,6 @@ def hora_brasil():
     return datetime.now(brasil).strftime("%d/%m/%Y %H:%M:%S")
 
 def salvar_no_historico(role, content):
-    """Salva a mensagem no arquivo .txt preservando dados existentes."""
     data_hora = hora_brasil()
     linha = f"[{data_hora}] {role.upper()}: {content}\n"
     with open("historico.txt", "a", encoding="utf-8") as f:
@@ -118,18 +113,15 @@ def carregar_contexto():
         return "Você é o Alosa, assistente comercial do Rodrigo Aiosa."
 
 # ---------------------------------------------------
-# INICIALIZAÇÃO DO ESTADO
+# INICIALIZAÇÃO E LÓGICA
 # ---------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
 
-# ---------------------------------------------------
-# LÓGICA DA IA
-# ---------------------------------------------------
 def perguntar_ia(historico):
     token = st.secrets.get("HF_TOKEN")
     if not token: return "Erro: Token HF_TOKEN não configurado."
-
+    
     ultima_msg = historico[-1]["content"].lower()
     gatilhos = ["preço", "valor", "mentoria", "quanto custa", "orçamento", "treinamento", "custo"]
     
@@ -146,21 +138,15 @@ def perguntar_ia(historico):
         r = requests.post(API_URL, headers=headers, json=payload)
         if r.status_code == 200:
             resposta = r.json()["choices"][0]["message"]["content"]
-            # Garantia de envio de contatos para temas técnicos
             if any(g in ultima_msg for g in gatilhos) and "11977019335" not in resposta:
-                resposta += "\n\nPara um orçamento personalizado de mentorias ou treinamentos técnicos, fale com o Rodrigo:\n"
-                resposta += "📱 WhatsApp: 11 97701-9335\n"
-                resposta += "📧 E-mail: rodrigoaiosa@gmail.com"
+                resposta += f"\n\nPara um orçamento personalizado, fale com o Rodrigo:\n"
+                resposta += f"📱 WhatsApp: 11 97701-9335\n📧 E-mail: rodrigoaiosa@gmail.com"
             return resposta
     except:
         return "Erro ao processar resposta."
     return "Erro ao gerar resposta."
 
-# ---------------------------------------------------
-# RENDERIZAÇÃO E FLUXO DO CHAT
-# ---------------------------------------------------
 st.title("💬 Alosa — Assistente IA")
-
 chat_container = st.container()
 
 def renderizar_mensagens():
@@ -182,16 +168,13 @@ if prompt := st.chat_input("Digite uma mensagem"):
     salvar_no_historico("Usuário", prompt)
     st.rerun()
 
-if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+if st.session_state.messages[-1]["role"] == "user":
     with st.spinner("Digitando..."):
         resposta_final = perguntar_ia(st.session_state.messages)
         st.session_state.messages.append({"role": "assistant", "content": resposta_final})
         salvar_no_historico("Alosa IA", resposta_final)
     st.rerun()
 
-# ---------------------------------------------------
-# SIDEBAR
-# ---------------------------------------------------
 with st.sidebar:
     if st.button("Nova Conversa"):
         st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
