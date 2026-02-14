@@ -44,7 +44,7 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 15px;
     line-height: 1.5;
     box-shadow: 0 1px 0 rgba(0,0,0,.1);
-    margin-bottom: 15px; /* DISTÂNCIA ENTRE AS CAIXAS */
+    margin-bottom: 15px; /* DISTÂNCIA ENTRE AS MENSAGENS */
     position: relative;
 }
 
@@ -67,19 +67,26 @@ h1, h2, h3, h4, h5, h6 {
     color: #666 !important;
 }
 
-/* INPUT */
+/* INPUT PERSONALIZADO (#262730) */
 [data-testid="stChatInput"] {
     padding-bottom: 20px;
 }
 
 [data-testid="stChatInput"] textarea {
-    background-color: #FFFFFF !important;
-    color: #000000 !important;
+    background-color: #262730 !important; /* COR SOLICITADA */
+    color: #FFFFFF !important; /* TEXTO BRANCO PARA CONTRASTE */
     border-radius: 20px;
+    border: 1px solid #3e404b !important;
 }
 
 textarea::placeholder {
-    color: #999999 !important;
+    color: #BBBBBB !important;
+}
+
+/* BOTÃO DE ENVIO */
+[data-testid="stChatInput"] button {
+    background-color: transparent !important;
+    color: #FFFFFF !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -95,12 +102,12 @@ def hora_brasil():
 # CONTEXTO
 # ---------------------------------------------------
 def carregar_contexto():
-    contatos = "\n\nIMPORTANTE: Para preços de treinamentos e mentorias, informe que o orçamento é personalizado e forneça os contatos: WhatsApp: 11977019335 e E-mail: rodrigoaiosa@gmail.com."
+    contatos = "\n\nIMPORTANTE: Se o usuário perguntar sobre preços, valores, treinamentos ou mentorias, explique que o orçamento é personalizado e forneça OBRIGATORIAMENTE os contatos: WhatsApp: 11977019335 e E-mail: rodrigoaiosa@gmail.com."
     try:
         with open("instrucoes.txt", "r", encoding="utf-8") as f:
             return f.read() + contatos
     except:
-        return "Você é o Alosa, assistente comercial especializado em IA e automação." + contatos
+        return "Você é o Alosa, assistente comercial." + contatos
 
 # ---------------------------------------------------
 # SESSION
@@ -111,16 +118,16 @@ if "messages" not in st.session_state:
     ]
 
 # ---------------------------------------------------
-# IA COM FILTRO DE ORÇAMENTO
+# IA COM LÓGICA DE CONTATO
 # ---------------------------------------------------
 def perguntar_ia(historico):
     token = st.secrets.get("HF_TOKEN")
     if not token:
-        return "Erro: Token HF_TOKEN não encontrado nos Secrets."
+        return "Erro: Configure o HF_TOKEN nos Secrets."
 
-    # Verifica se a última mensagem do usuário pede preços/valores
-    ultima_msg = historico[-1]["content"].lower()
-    gatilhos = ["preço", "valor", "quanto custa", "orçamento", "treinamento", "mentoria", "custo"]
+    ultima_msg_user = historico[-1]["content"].lower()
+    # Gatilhos para enviar contatos
+    gatilhos = ["preço", "valor", "quanto custa", "orçamento", "treinamento", "mentoria", "custo", "pagamento"]
     
     API_URL = "https://router.huggingface.co/v1/chat/completions"
     
@@ -141,24 +148,26 @@ def perguntar_ia(historico):
         if r.status_code == 200:
             resposta = r.json()["choices"][0]["message"]["content"]
             
-            # Reforço manual caso a IA esqueça os contatos em perguntas de preço
-            if any(g in ultima_msg for g in gatilhos) and "11977019335" not in resposta:
-                resposta += "\n\nPara um orçamento personalizado de treinamentos ou mentoria, entre em contato comigo:\n"
+            # Verificação de segurança para garantir o envio dos contatos
+            if any(g in ultima_msg_user for g in gatilhos) and "11977019335" not in resposta:
+                resposta += "\n\nPara te passar um orçamento detalhado e personalizado sobre treinamentos ou mentoria, por favor entre em contato:\n"
                 resposta += "📱 WhatsApp: 11 97701-9335\n"
                 resposta += "📧 E-mail: rodrigoaiosa@gmail.com"
             
             return resposta
-    except Exception as e:
-        return f"Erro de conexão: {str(e)}"
+    except:
+        return "Erro ao processar sua solicitação."
     
-    return "Erro ao gerar resposta da IA."
+    return "Erro ao gerar resposta."
 
 # ---------------------------------------------------
-# INTERFACE
+# HEADER
 # ---------------------------------------------------
 st.title("💬 Alosa — Assistente IA")
 
-# Container para o histórico
+# ---------------------------------------------------
+# EXIBIÇÃO DAS MENSAGENS
+# ---------------------------------------------------
 chat_placeholder = st.container()
 
 with chat_placeholder:
@@ -180,16 +189,16 @@ with chat_placeholder:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# INPUT E PROCESSAMENTO
+# INPUT E RESPOSTA
 # ---------------------------------------------------
 if prompt := st.chat_input("Digite uma mensagem"):
-    # Adiciona msg do usuário
+    # Adiciona a pergunta à sessão
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Roda a IA
+    # Gera a resposta
     with st.spinner("Digitando..."):
-        resposta_final = perguntar_ia(st.session_state.messages)
-        st.session_state.messages.append({"role": "assistant", "content": resposta_final})
+        resposta_ia = perguntar_ia(st.session_state.messages)
+        st.session_state.messages.append({"role": "assistant", "content": resposta_ia})
     
     st.rerun()
 
@@ -197,9 +206,7 @@ if prompt := st.chat_input("Digite uma mensagem"):
 # SIDEBAR
 # ---------------------------------------------------
 with st.sidebar:
-    st.subheader("Configurações")
-    if st.button("Limpar Conversa"):
+    st.subheader("Opções")
+    if st.button("Limpar Histórico"):
         st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
         st.rerun()
-    
-    st.info("O orçamento de treinamentos e mentorias é sempre personalizado.")
