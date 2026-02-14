@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import time
+import os
 from datetime import datetime, timedelta, timezone
 
 # ---------------------------------------------------
@@ -44,7 +45,7 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 15px;
     line-height: 1.5;
     box-shadow: 0 1px 0 rgba(0,0,0,.1);
-    margin-bottom: 15px; /* DISTÂNCIA ENTRE AS CAIXAS */
+    margin-bottom: 15px;
     position: relative;
 }
 
@@ -77,12 +78,11 @@ h1, h2, h3, h4, h5, h6 {
     color: #FFFFFF !important;
     border-radius: 20px;
     border: 1px solid #3e404b !important;
-    padding-left: 20px !important; /* RECUO PARA O CURSOR NÃO FICAR COLADO */
+    padding-left: 20px !important;
 }
 
 textarea::placeholder {
     color: #BBBBBB !important;
-    padding-left: 0px !important;
 }
 
 /* BOTÃO DE ENVIO */
@@ -94,15 +94,19 @@ textarea::placeholder {
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# HORA BRASIL
+# FUNÇÕES DE APOIO (HORA E PERSISTÊNCIA)
 # ---------------------------------------------------
 def hora_brasil():
     brasil = timezone(timedelta(hours=-3))
-    return datetime.now(brasil).strftime("%H:%M")
+    return datetime.now(brasil).strftime("%d/%m/%Y %H:%M:%S")
 
-# ---------------------------------------------------
-# CONTEXTO
-# ---------------------------------------------------
+def salvar_no_historico(role, content):
+    """Salva a mensagem no arquivo txt preservando dados existentes."""
+    data_hora = hora_brasil()
+    linha = f"[{data_hora}] {role.upper()}: {content}\n"
+    with open("historico.txt", "a", encoding="utf-8") as f:
+        f.write(linha)
+
 def carregar_contexto():
     contatos = "\n\nIMPORTANTE: Para preços de treinamentos e mentorias, informe que o orçamento é personalizado e forneça: WhatsApp: 11977019335 e E-mail: rodrigoaiosa@gmail.com."
     try:
@@ -112,7 +116,7 @@ def carregar_contexto():
         return "Você é o Alosa, assistente comercial." + contatos
 
 # ---------------------------------------------------
-# SESSION
+# SESSION STATE
 # ---------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = [
@@ -120,7 +124,7 @@ if "messages" not in st.session_state:
     ]
 
 # ---------------------------------------------------
-# IA COM LÓGICA DE CONTATO
+# LÓGICA DA IA
 # ---------------------------------------------------
 def perguntar_ia(historico):
     token = st.secrets.get("HF_TOKEN")
@@ -149,18 +153,17 @@ def perguntar_ia(historico):
         if r.status_code == 200:
             resposta = r.json()["choices"][0]["message"]["content"]
             
+            # Reforço de contatos se necessário
             if any(g in ultima_msg for g in gatilhos) and "11977019335" not in resposta:
-                resposta += "\n\nPara um orçamento personalizado, fale comigo:\n"
-                resposta += "📱 WhatsApp: 11 97701-9335\n"
-                resposta += "📧 E-mail: rodrigoaiosa@gmail.com"
+                resposta += f"\n\nPara um orçamento personalizado, fale comigo:\n📱 WhatsApp: 11 97701-9335\n📧 E-mail: rodrigoaiosa@gmail.com"
             
             return resposta
     except:
-        return "Erro ao gerar resposta."
-    return "Erro ao gerar resposta."
+        return "Erro ao gerar resposta da IA."
+    return "Erro na comunicação com a IA."
 
 # ---------------------------------------------------
-# INTERFACE
+# RENDERIZAÇÃO DO CHAT
 # ---------------------------------------------------
 st.title("💬 Alosa — Assistente IA")
 
@@ -177,7 +180,7 @@ with chat_placeholder:
             f"""
             <div class="bubble {classe}">
                 {msg["content"]}
-                <div class="time">{hora_brasil()}</div>
+                <div class="time">{hora_brasil().split(' ')[1]}</div>
             </div>
             """,
             unsafe_allow_html=True
@@ -185,14 +188,22 @@ with chat_placeholder:
     st.markdown('</div>', unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# INPUT
+# INPUT E FLUXO DE SALVAMENTO
 # ---------------------------------------------------
 if prompt := st.chat_input("Digite uma mensagem"):
+    # 1. Adiciona à sessão
     st.session_state.messages.append({"role": "user", "content": prompt})
     
+    # 2. Salva imediatamente no histórico local (.txt)
+    salvar_no_historico("Usuário", prompt)
+    
+    # 3. Gera resposta da IA
     with st.spinner("Digitando..."):
         resposta = perguntar_ia(st.session_state.messages)
         st.session_state.messages.append({"role": "assistant", "content": resposta})
+        
+        # 4. Salva resposta da IA no histórico local (.txt)
+        salvar_no_historico("Alosa IA", resposta)
     
     st.rerun()
 
