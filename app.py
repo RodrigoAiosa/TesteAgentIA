@@ -191,7 +191,7 @@ with chat_placeholder:
 # ---------------------------------------------------
 # INPUT E RESPOSTA
 # ---------------------------------------------------
-if prompt := st.chat_input("Digite uma mensagem"):
+if prompt := st.chat_input(""):
     # Adiciona a pergunta à sessão
     st.session_state.messages.append({"role": "user", "content": prompt})
     
