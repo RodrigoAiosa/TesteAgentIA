@@ -1,100 +1,87 @@
 import streamlit as st
 import requests
-import pandas as pd
 import time
 from datetime import datetime, timedelta, timezone
 
 # ---------------------------------------------------
-# CONFIGURAÇÃO DA PÁGINA
+# CONFIGURAÇÃO
 # ---------------------------------------------------
 st.set_page_config(
-    page_title="Alosa IA - Rodrigo Aiosa",
+    page_title="Alosa IA",
     page_icon="💬",
     layout="wide"
 )
 
 # ---------------------------------------------------
-# CSS GLOBAL
+# CSS WHATSAPP WEB
 # ---------------------------------------------------
-def apply_custom_style():
-    st.markdown("""
-        <style>
-        header, footer, #MainMenu {visibility: hidden;}
+st.markdown("""
+<style>
+header, footer, #MainMenu {visibility: hidden;}
 
-        .stApp {
-            background-color: #ECE5DD;
-        }
+.stApp {
+    background-color: #ECE5DD;
+}
 
-        /* TEXTO PRETO GLOBAL */
-        html, body, p, div, span, label,
-        h1, h2, h3, h4, h5, h6,
-        li, strong, em, small,
-        .stMarkdown, .stText {
-            color: #000000 !important;
-        }
+/* TEXTO PRETO GLOBAL */
+html, body, p, div, span, label,
+h1, h2, h3, h4, h5, h6 {
+    color: #000000 !important;
+}
 
-        section[data-testid="stSidebar"] * {
-            color: #000000 !important;
-        }
+/* ÁREA DO CHAT */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 80px;
+}
 
-        /* INPUT DO CHAT */
-        [data-testid="stChatInput"] textarea {
-            background-color: #2b2b2b !important;
-            color: #FFFFFF !important;
-            border-radius: 12px;
-            padding: 10px;
-        }
+/* BOLHAS */
+.bubble {
+    padding: 10px 14px;
+    border-radius: 8px;
+    max-width: 65%;
+    font-size: 15px;
+    line-height: 1.5;
+    box-shadow: 0 1px 0 rgba(0,0,0,.1);
+}
 
-        textarea::placeholder {
-            color: #CCCCCC !important;
-        }
+.user {
+    background-color: #DCF8C6;
+    margin-left: auto;
+}
 
-        /* BOLHAS WHATSAPP */
-        .chat-bubble {
-            padding: 12px 14px;
-            border-radius: 10px;
-            margin: 6px 0;
-            max-width: 70%;
-            font-size: 1rem;
-            line-height: 1.5;
-            font-family: Arial, Helvetica, sans-serif;
-            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
-            color: #000000 !important;
-        }
+.bot {
+    background-color: #FFFFFF;
+    margin-right: auto;
+}
 
-        .assistant-bubble {
-            background-color: #FFFFFF;
-            border-bottom-left-radius: 2px;
-        }
+.time {
+    font-size: 10px;
+    text-align: right;
+    margin-top: 3px;
+}
 
-        .user-bubble {
-            background-color: #DCF8C6;
-            border-bottom-right-radius: 2px;
-        }
+/* INPUT */
+[data-testid="stChatInput"] textarea {
+    background-color: #2b2b2b !important;
+    color: #FFFFFF !important;
+    border-radius: 20px;
+}
 
-        .chat-row {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .time {
-            font-size: 0.7rem;
-            color: #000000 !important;
-            text-align: right;
-            margin-top: 4px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-apply_custom_style()
+textarea::placeholder {
+    color: #BBBBBB !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ---------------------------------------------------
-# HORA BRASIL UTC-3
+# HORA BRASIL
 # ---------------------------------------------------
 def hora_brasil():
-    brasil_tz = timezone(timedelta(hours=-3))
-    return datetime.now(brasil_tz).strftime("%H:%M")
+    brasil = timezone(timedelta(hours=-3))
+    return datetime.now(brasil).strftime("%H:%M")
 
 # ---------------------------------------------------
 # CONTEXTO
@@ -103,21 +90,16 @@ def carregar_contexto():
     try:
         with open("instrucoes.txt", "r", encoding="utf-8") as f:
             return f.read()
-    except FileNotFoundError:
-        return "Você é o Alosa, assistente comercial do Rodrigo Aiosa."
+    except:
+        return "Você é o Alosa, assistente comercial."
 
 # ---------------------------------------------------
-# SESSION STATE
+# SESSION
 # ---------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": carregar_contexto()}
     ]
-
-if "tabela_dados" not in st.session_state:
-    st.session_state.tabela_dados = pd.DataFrame(
-        columns=["Data/Hora", "Pergunta", "Resposta"]
-    )
 
 # ---------------------------------------------------
 # IA
@@ -125,83 +107,78 @@ if "tabela_dados" not in st.session_state:
 def perguntar_ia(historico):
     token = st.secrets.get("HF_TOKEN")
     if not token:
-        return "⚠️ HF_TOKEN não configurado."
+        return "Token não configurado."
 
     API_URL = "https://router.huggingface.co/v1/chat/completions"
+
+    payload = {
+        "model": "meta-llama/Llama-3.2-3B-Instruct",
+        "messages": historico,
+        "max_tokens": 800,
+        "temperature": 0.7
+    }
 
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
 
-    payload = {
-        "model": "meta-llama/Llama-3.2-3B-Instruct",
-        "messages": historico,
-        "max_tokens": 1200,
-        "temperature": 0.7
-    }
+    r = requests.post(API_URL, headers=headers, json=payload)
 
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-        if response.status_code == 200:
-            return response.json()["choices"][0]["message"]["content"]
-        return "⚠️ Erro API."
-    except:
-        return "⚠️ Erro de conexão."
+    if r.status_code == 200:
+        return r.json()["choices"][0]["message"]["content"]
+    return "Erro ao gerar resposta."
 
 # ---------------------------------------------------
-# TÍTULO
+# HEADER
 # ---------------------------------------------------
-st.title("💬 Alosa — Consultor Estratégico IA")
+st.title("💬 Alosa — Assistente IA")
 
 # ---------------------------------------------------
-# CHAT
+# CHAT (ORDEM CORRETA)
 # ---------------------------------------------------
+st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+
 for msg in st.session_state.messages:
     if msg["role"] == "system":
         continue
 
-    bubble_class = "assistant-bubble"
-    align = "flex-start"
-
+    classe = "bot"
     if msg["role"] == "user":
-        bubble_class = "user-bubble"
-        align = "flex-end"
+        classe = "user"
 
     st.markdown(
         f"""
-        <div class="chat-row" style="align-items:{align}">
-            <div class="chat-bubble {bubble_class}">
-                {msg["content"]}
-                <div class="time">{hora_brasil()}</div>
-            </div>
+        <div class="bubble {classe}">
+            {msg["content"]}
+            <div class="time">{hora_brasil()}</div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
+st.markdown('</div>', unsafe_allow_html=True)
+
 # ---------------------------------------------------
 # INPUT
 # ---------------------------------------------------
-if prompt := st.chat_input("Digite sua mensagem..."):
+if prompt := st.chat_input("Digite uma mensagem"):
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    with st.spinner("Alosa está digitando..."):
+    with st.spinner("Digitando..."):
         resposta = perguntar_ia(st.session_state.messages)
 
     placeholder = st.empty()
-    full_res = ""
+    texto = ""
 
-    for chunk in resposta.split(" "):
-        full_res += chunk + " "
-        time.sleep(0.015)
+    for palavra in resposta.split(" "):
+        texto += palavra + " "
+        time.sleep(0.01)
         placeholder.markdown(
             f"""
-            <div class="chat-row" style="align-items:flex-start">
-                <div class="chat-bubble assistant-bubble">
-                    {full_res}▌
-                    <div class="time">{hora_brasil()}</div>
-                </div>
+            <div class="bubble bot">
+                {texto}▌
+                <div class="time">{hora_brasil()}</div>
             </div>
             """,
             unsafe_allow_html=True
@@ -209,30 +186,26 @@ if prompt := st.chat_input("Digite sua mensagem..."):
 
     placeholder.markdown(
         f"""
-        <div class="chat-row" style="align-items:flex-start">
-            <div class="chat-bubble assistant-bubble">
-                {full_res}
-                <div class="time">{hora_brasil()}</div>
-            </div>
+        <div class="bubble bot">
+            {texto}
+            <div class="time">{hora_brasil()}</div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
     st.session_state.messages.append(
-        {"role": "assistant", "content": full_res}
+        {"role": "assistant", "content": texto}
     )
 
 # ---------------------------------------------------
 # SIDEBAR
 # ---------------------------------------------------
 with st.sidebar:
-    st.subheader("📜 Painel de Gestão")
+    st.subheader("Controle")
 
-    if st.button("Nova Conversa"):
+    if st.button("Nova conversa"):
         st.session_state.messages = [
             {"role": "system", "content": carregar_contexto()}
         ]
         st.rerun()
-
-    st.write(f"Interações: {len(st.session_state.messages)-1}")
