@@ -14,13 +14,25 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------
-# CSS WHATSAPP STYLE (COM REMOÇÃO DE RODAPÉ)
+# CSS WHATSAPP STYLE (REMOÇÃO TOTAL DE RODAPÉ)
 # ---------------------------------------------------
 st.markdown("""
 <style>
 /* ESCONDER HEADER, RODAPÉ E MENU PADRÃO */
-header, footer, #MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+footer {visibility: hidden;}
+#MainMenu {visibility: hidden;}
 [data-testid="stStatusWidget"] {visibility: hidden;}
+
+/* REMOVER A MARCA D'ÁGUA 'MADE WITH STREAMLIT' */
+.viewerBadge_container__1QS1n {display: none !important;}
+.stAppDeployButton {display: none !important;}
+
+/* AJUSTE PARA O CONTEÚDO NÃO FICAR COLADO NO TOPO SEM O HEADER */
+.block-container {
+    padding-top: 2rem;
+    padding-bottom: 0rem;
+}
 
 .stApp {
     background-color: #ECE5DD;
@@ -75,7 +87,7 @@ h1, h2, h3, h4, h5, h6 {
     color: #FFFFFF !important;
     border-radius: 20px;
     border: 1px solid #3e404b !important;
-    padding-left: 20px !important; /* CURSOR COM RECUO */
+    padding-left: 20px !important;
 }
 
 textarea::placeholder {
@@ -149,7 +161,6 @@ def perguntar_ia(historico):
 # ---------------------------------------------------
 st.title("💬 Alosa — Assistente IA")
 
-# Container fixo para mensagens
 chat_container = st.container()
 
 def renderizar_mensagens():
@@ -164,26 +175,18 @@ def renderizar_mensagens():
             )
         st.markdown('</div>', unsafe_allow_html=True)
 
-# Renderiza as mensagens atuais
 renderizar_mensagens()
 
-# Input do usuário
 if prompt := st.chat_input("Digite uma mensagem"):
-    # 1. Adiciona à sessão e salva no arquivo imediatamente
     st.session_state.messages.append({"role": "user", "content": prompt})
     salvar_no_historico("Usuário", prompt)
-    
-    # 2. Rerun para mostrar a mensagem do usuário na tela ANTES da IA responder
     st.rerun()
 
-# Se a última mensagem for do usuário, chama a IA
-if st.session_state.messages[-1]["role"] == "user":
+if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
     with st.spinner("Digitando..."):
         resposta_final = perguntar_ia(st.session_state.messages)
         st.session_state.messages.append({"role": "assistant", "content": resposta_final})
         salvar_no_historico("Alosa IA", resposta_final)
-    
-    # 3. Rerun para mostrar a resposta da IA
     st.rerun()
 
 # ---------------------------------------------------
