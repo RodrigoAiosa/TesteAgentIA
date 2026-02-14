@@ -4,14 +4,18 @@ import pandas as pd
 import time
 from datetime import datetime, timedelta, timezone
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
+# ---------------------------------------------------
+# CONFIGURAÇÃO DA PÁGINA
+# ---------------------------------------------------
 st.set_page_config(
     page_title="Alosa IA - Rodrigo Aiosa",
     page_icon="💬",
     layout="wide"
 )
 
-# --- CSS ESTILO WHATSAPP (TEXTO PRETO FORÇADO) ---
+# ---------------------------------------------------
+# CSS GLOBAL (FORÇANDO TEXTO PRETO)
+# ---------------------------------------------------
 def apply_custom_style():
     st.markdown("""
         <style>
@@ -19,6 +23,28 @@ def apply_custom_style():
 
         .stApp {
             background-color: #ECE5DD;
+        }
+
+        html, body, p, div, span, label,
+        h1, h2, h3, h4, h5, h6,
+        li, strong, em, small,
+        .stMarkdown, .stText,
+        .stChatMessageContent,
+        textarea, input {
+            color: #000000 !important;
+        }
+
+        section[data-testid="stSidebar"] * {
+            color: #000000 !important;
+        }
+
+        textarea::placeholder {
+            color: #000000 !important;
+            opacity: 1 !important;
+        }
+
+        button {
+            color: #000000 !important;
         }
 
         .chat-bubble {
@@ -55,22 +81,21 @@ def apply_custom_style():
             text-align: right;
             margin-top: 4px;
         }
-
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-        }
         </style>
     """, unsafe_allow_html=True)
 
 apply_custom_style()
 
-# --- FUNÇÃO HORA BRASIL (UTC -3 FIXO) ---
+# ---------------------------------------------------
+# HORA BRASIL UTC-3
+# ---------------------------------------------------
 def hora_brasil():
     brasil_tz = timezone(timedelta(hours=-3))
     return datetime.now(brasil_tz).strftime("%H:%M")
 
-# --- CARREGAR CONTEXTO ---
+# ---------------------------------------------------
+# CONTEXTO DO ASSISTENTE
+# ---------------------------------------------------
 def carregar_contexto():
     try:
         with open("instrucoes.txt", "r", encoding="utf-8") as f:
@@ -78,7 +103,9 @@ def carregar_contexto():
     except FileNotFoundError:
         return "Você é o Alosa, assistente comercial do Rodrigo Aiosa."
 
-# --- ESTADO DA SESSÃO ---
+# ---------------------------------------------------
+# SESSION STATE
+# ---------------------------------------------------
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {"role": "system", "content": carregar_contexto()}
@@ -89,13 +116,16 @@ if "tabela_dados" not in st.session_state:
         columns=["Data/Hora", "Pergunta", "Resposta"]
     )
 
-# --- INTEGRAÇÃO COM IA ---
+# ---------------------------------------------------
+# FUNÇÃO IA
+# ---------------------------------------------------
 def perguntar_ia(historico):
     token = st.secrets.get("HF_TOKEN")
     if not token:
         return "⚠️ HF_TOKEN não configurado."
 
     API_URL = "https://router.huggingface.co/v1/chat/completions"
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
@@ -112,17 +142,18 @@ def perguntar_ia(historico):
         response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
         if response.status_code == 200:
             return response.json()["choices"][0]["message"]["content"]
-        else:
-            return "⚠️ Erro API."
-    except Exception:
+        return "⚠️ Erro API."
+    except:
         return "⚠️ Erro de conexão."
 
-# --- TÍTULO ---
+# ---------------------------------------------------
+# TÍTULO
+# ---------------------------------------------------
 st.title("💬 Alosa — Consultor Estratégico IA")
 
-# --- RENDERIZAÇÃO DO CHAT ---
-st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-
+# ---------------------------------------------------
+# CHAT RENDER
+# ---------------------------------------------------
 for msg in st.session_state.messages:
     if msg["role"] == "system":
         continue
@@ -146,9 +177,9 @@ for msg in st.session_state.messages:
         unsafe_allow_html=True
     )
 
-st.markdown('</div>', unsafe_allow_html=True)
-
-# --- INPUT ---
+# ---------------------------------------------------
+# INPUT
+# ---------------------------------------------------
 if prompt := st.chat_input("Digite sua mensagem..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -200,7 +231,9 @@ if prompt := st.chat_input("Digite sua mensagem..."):
         ignore_index=True
     )
 
-# --- SIDEBAR ---
+# ---------------------------------------------------
+# SIDEBAR
+# ---------------------------------------------------
 with st.sidebar:
     st.subheader("📜 Painel de Gestão")
 
