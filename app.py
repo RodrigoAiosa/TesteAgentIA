@@ -1,9 +1,8 @@
 import streamlit as st
 import requests
-import os
 import pandas as pd
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -12,7 +11,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- CSS ESTILO WHATSAPP ---
+# --- CSS ESTILO WHATSAPP (TEXTO PRETO FORÇADO) ---
 def apply_custom_style():
     st.markdown("""
         <style>
@@ -31,17 +30,16 @@ def apply_custom_style():
             line-height: 1.5;
             font-family: Arial, Helvetica, sans-serif;
             box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+            color: #000000 !important;
         }
 
         .assistant-bubble {
-            background-color: white;
-            align-self: flex-start;
+            background-color: #FFFFFF;
             border-bottom-left-radius: 2px;
         }
 
         .user-bubble {
             background-color: #DCF8C6;
-            align-self: flex-end;
             border-bottom-right-radius: 2px;
         }
 
@@ -53,7 +51,7 @@ def apply_custom_style():
 
         .time {
             font-size: 0.7rem;
-            color: #555;
+            color: #000000 !important;
             text-align: right;
             margin-top: 4px;
         }
@@ -67,9 +65,10 @@ def apply_custom_style():
 
 apply_custom_style()
 
-# --- FUNÇÃO HORA BRASIL ---
+# --- FUNÇÃO HORA BRASIL (UTC -3 FIXO) ---
 def hora_brasil():
-    return datetime.now().strftime("%H:%M")
+    brasil_tz = timezone(timedelta(hours=-3))
+    return datetime.now(brasil_tz).strftime("%H:%M")
 
 # --- CARREGAR CONTEXTO ---
 def carregar_contexto():
@@ -111,7 +110,6 @@ def perguntar_ia(historico):
 
     try:
         response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-
         if response.status_code == 200:
             return response.json()["choices"][0]["message"]["content"]
         else:
@@ -122,7 +120,7 @@ def perguntar_ia(historico):
 # --- TÍTULO ---
 st.title("💬 Alosa — Consultor Estratégico IA")
 
-# --- CHAT RENDER ---
+# --- RENDERIZAÇÃO DO CHAT ---
 st.markdown('<div class="chat-container">', unsafe_allow_html=True)
 
 for msg in st.session_state.messages:
@@ -150,7 +148,7 @@ for msg in st.session_state.messages:
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- INPUT DO CHAT ---
+# --- INPUT ---
 if prompt := st.chat_input("Digite sua mensagem..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -192,7 +190,7 @@ if prompt := st.chat_input("Digite sua mensagem..."):
     )
 
     nova_linha = pd.DataFrame([{
-        "Data/Hora": datetime.now().strftime("%H:%M:%S"),
+        "Data/Hora": hora_brasil(),
         "Pergunta": prompt,
         "Resposta": full_res
     }])
