@@ -14,11 +14,13 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------
-# CSS WHATSAPP STYLE (COM AJUSTES DE DISTÂNCIA E INPUT)
+# CSS WHATSAPP STYLE (COM REMOÇÃO DE RODAPÉ)
 # ---------------------------------------------------
 st.markdown("""
 <style>
+/* ESCONDER HEADER, RODAPÉ E MENU PADRÃO */
 header, footer, #MainMenu {visibility: hidden;}
+[data-testid="stStatusWidget"] {visibility: hidden;}
 
 .stApp {
     background-color: #ECE5DD;
