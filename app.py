@@ -39,12 +39,11 @@ def apply_whatsapp_style():
             position: relative !important;
         }
 
-        /* USUÁRIO - Mensagens à DIREITA (verde) */
+        /* Mensagem do usuário (direita - verde) */
         [data-testid="stChatMessageUser"] {
             background-color: #D9FDD3 !important;
             margin-left: auto !important;
             margin-right: 8px !important;
-            display: block !important;
         }
 
         [data-testid="stChatMessageUser"]::after {
@@ -59,12 +58,11 @@ def apply_whatsapp_style():
             border-color: transparent transparent transparent #D9FDD3;
         }
 
-        /* ASSISTENTE - Mensagens à ESQUERDA (branco) */
+        /* Mensagem do assistente (esquerda - branco) */
         [data-testid="stChatMessageAssistant"] {
             background-color: #FFFFFF !important;
             margin-right: auto !important;
             margin-left: 8px !important;
-            display: block !important;
         }
 
         [data-testid="stChatMessageAssistant"]::before {
@@ -81,22 +79,20 @@ def apply_whatsapp_style():
 
         /* Texto das mensagens */
         .stChatMessage .stMarkdown p {
-            color: #303030 !important;
+            color: #000000 !important;
             font-size: 14.2px !important;
             line-height: 19px !important;
             margin: 0 !important;
-            padding-right: 50px !important;
             font-weight: 400 !important;
         }
 
         .stChatMessage .stMarkdown strong {
             font-weight: 600 !important;
-            color: #1F1F1F !important;
         }
 
         /* Links estilo WhatsApp */
         .stChatMessage a {
-            color: #027EB5 !important;
+            color: #039BE5 !important;
             text-decoration: none !important;
         }
 
@@ -162,27 +158,12 @@ def apply_whatsapp_style():
             background-color: #1EBE57 !important;
         }
 
-        /* Horário nas mensagens - canto inferior direito */
-        .msg-time {
-            position: absolute !important;
-            bottom: 4px !important;
-            right: 8px !important;
+        /* Horário nas mensagens */
+        .message-time {
             font-size: 11px !important;
             color: #667781 !important;
-            font-weight: 400 !important;
-        }
-        
-        .message-date {
-            font-size: 12px !important;
-            color: #54656F !important;
-            background-color: rgba(255,255,255,0.95) !important;
-            padding: 6px 12px !important;
-            border-radius: 7.5px !important;
-            display: inline-block !important;
-            margin: 15px auto !important;
-            text-align: center !important;
-            box-shadow: 0 1px 0.5px rgba(0,0,0,0.13) !important;
-            font-weight: 500 !important;
+            margin-top: 4px !important;
+            text-align: right !important;
         }
 
         /* Avatar circular estilo WhatsApp */
@@ -196,12 +177,6 @@ def apply_whatsapp_style():
         /* Spinner */
         .stSpinner > div {
             border-top-color: #25D366 !important;
-        }
-        
-        /* Wrapper customizado para mensagem */
-        .msg-wrapper {
-            position: relative !important;
-            padding-bottom: 18px !important;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -219,9 +194,6 @@ def carregar_contexto():
 # --- INICIALIZAÇÃO ---
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
-
-if "message_timestamps" not in st.session_state:
-    st.session_state.message_timestamps = []
 
 if "tabela_dados" not in st.session_state:
     st.session_state.tabela_dados = pd.DataFrame(columns=["Data/Hora", "Pergunta", "Resposta"])
@@ -241,87 +213,41 @@ def perguntar_ia(historico):
 # --- INTERFACE ---
 st.title("💬 Alosa IA")
 
-# Mostrar separador de data quando necessário
-current_date = None
-
-for idx, msg in enumerate(st.session_state.messages):
+for msg in st.session_state.messages:
     if msg["role"] != "system":
-        # Obter timestamp da mensagem
-        if idx - 1 < len(st.session_state.message_timestamps):
-            msg_datetime = st.session_state.message_timestamps[idx - 1]
-        else:
-            msg_datetime = datetime.now()
-        
-        msg_date = msg_datetime.strftime("%d/%m/%Y")
-        msg_time = msg_datetime.strftime("%H:%M")
-        
-        # Mostrar separador de data se mudou o dia
-        if msg_date != current_date:
-            current_date = msg_date
-            st.markdown(f'<div style="text-align: center; margin: 20px 0;"><span class="message-date">{msg_date}</span></div>', unsafe_allow_html=True)
-        
         with st.chat_message(msg["role"], avatar="👤" if msg["role"] == "user" else "🤖"):
-            # Wrapper com horário
-            st.markdown(f"""
-                <div class="msg-wrapper">
-                    {msg["content"]}
-                    <div class="msg-time">{msg_time}</div>
-                </div>
-            """, unsafe_allow_html=True)
+            st.markdown(msg["content"])
+            # Adicionar horário estilo WhatsApp
+            timestamp = datetime.now().strftime("%H:%M")
+            st.markdown(f'<div class="message-time">{timestamp}</div>', unsafe_allow_html=True)
 
 if prompt := st.chat_input("Digite uma mensagem..."):
-    now = datetime.now()
-    
     st.session_state.messages.append({"role": "user", "content": prompt})
-    st.session_state.message_timestamps.append(now)
-    
-    msg_date = now.strftime("%d/%m/%Y")
-    msg_time = now.strftime("%H:%M")
-    
-    # Mostrar separador de data se necessário
-    if current_date != msg_date:
-        st.markdown(f'<div style="text-align: center; margin: 20px 0;"><span class="message-date">{msg_date}</span></div>', unsafe_allow_html=True)
+    timestamp = datetime.now().strftime("%H:%M")
     
     with st.chat_message("user", avatar="👤"):
-        st.markdown(f"""
-            <div class="msg-wrapper">
-                {prompt}
-                <div class="msg-time">{msg_time}</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(prompt)
+        st.markdown(f'<div class="message-time">{timestamp}</div>', unsafe_allow_html=True)
 
     with st.chat_message("assistant", avatar="🤖"):
         placeholder = st.empty()
         with st.spinner("Digitando..."):
             resposta = perguntar_ia(st.session_state.messages)
         
-        now_assistant = datetime.now()
-        msg_time_assistant = now_assistant.strftime("%H:%M")
-        
-        # Animação de digitação
         full_res = ""
         for chunk in resposta.split(" "):
             full_res += chunk + " "
             time.sleep(0.01)
-            placeholder.markdown(f"""
-                <div class="msg-wrapper">
-                    {full_res}▌
-                </div>
-            """, unsafe_allow_html=True)
+            placeholder.markdown(full_res + "▌")
+        placeholder.markdown(full_res)
         
-        # Exibir mensagem final com horário
-        placeholder.markdown(f"""
-            <div class="msg-wrapper">
-                {full_res.strip()}
-                <div class="msg-time">{msg_time_assistant}</div>
-            </div>
-        """, unsafe_allow_html=True)
+        timestamp = datetime.now().strftime("%H:%M")
+        st.markdown(f'<div class="message-time">{timestamp}</div>', unsafe_allow_html=True)
 
-    st.session_state.messages.append({"role": "assistant", "content": full_res.strip()})
-    st.session_state.message_timestamps.append(now_assistant)
+    st.session_state.messages.append({"role": "assistant", "content": full_res})
     
     # SALVAR E PRESERVAR DADOS
-    nova_linha = pd.DataFrame([{"Data/Hora": now.strftime("%d/%m/%Y %H:%M:%S"), "Pergunta": prompt, "Resposta": full_res.strip()}])
+    nova_linha = pd.DataFrame([{"Data/Hora": datetime.now().strftime("%H:%M:%S"), "Pergunta": prompt, "Resposta": full_res}])
     st.session_state.tabela_dados = pd.concat([st.session_state.tabela_dados, nova_linha], ignore_index=True)
 
 # --- SIDEBAR ---
@@ -330,7 +256,6 @@ with st.sidebar:
     
     if st.button("🔄 Nova Conversa", use_container_width=True):
         st.session_state.messages = [{"role": "system", "content": carregar_contexto()}]
-        st.session_state.message_timestamps = []
         st.rerun()
     
     st.write(f"📊 Interações: **{len(st.session_state.tabela_dados)}**")
