@@ -116,33 +116,32 @@ if "messages" not in st.session_state:
 # ---------------------------------------------------
 def perguntar_ia(historico):
     token = st.secrets.get("HF_TOKEN")
-    if not token: return "Erro: Token HF_TOKEN não configurado."
 
-    ultima_msg = historico[-1]["content"].lower()
-    gatilhos = ["preço", "valor", "mentoria", "quanto custa", "orçamento", "treinamento", "custo"]
-    
+    if not token:
+        return "Erro: Token HF_TOKEN não configurado."
+
     API_URL = "https://api-inference.huggingface.co/v1/chat/completions"
+
     payload = {
-        "model": "meta-llama/Llama-3.2-3B-Instruct",
+        "model": "meta-llama/Meta-Llama-3-8B-Instruct",
         "messages": historico,
         "max_tokens": 800,
         "temperature": 0.7
     }
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
 
     try:
         r = requests.post(API_URL, headers=headers, json=payload)
-        if r.status_code == 200:
-            resposta = r.json()["choices"][0]["message"]["content"]
-            # Garantia de envio de contatos para temas técnicos
-            if any(g in ultima_msg for g in gatilhos) and "11977019335" not in resposta:
-                resposta += "\n\nPara um orçamento personalizado de mentorias ou treinamentos técnicos, fale com o Rodrigo:\n"
-                resposta += "📱 WhatsApp: 11 97701-9335\n"
-                resposta += "📧 E-mail: rodrigoaiosa@gmail.com"
-            return resposta
-    except:
-        return "Erro ao processar resposta."
-    return "Erro ao gerar resposta."
+
+        # 👇 DEBUG
+        return f"STATUS: {r.status_code} | RESPOSTA: {r.text}"
+
+    except Exception as e:
+        return f"Erro interno: {str(e)}"
 
 # ---------------------------------------------------
 # RENDERIZAÇÃO E FLUXO DO CHAT
