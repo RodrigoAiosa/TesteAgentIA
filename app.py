@@ -121,7 +121,7 @@ def perguntar_ia(historico):
     ultima_msg = historico[-1]["content"].lower()
     gatilhos = ["preço", "valor", "mentoria", "quanto custa", "orçamento", "treinamento", "custo"]
     
-    API_URL = "API_URL = "https://api-inference.huggingface.co/v1/chat/completions"
+    API_URL = "https://api-inference.huggingface.co/v1/chat/completions"
     payload = {
         "model": "meta-llama/Llama-3.2-3B-Instruct",
         "messages": historico,
