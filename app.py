@@ -120,13 +120,14 @@ def perguntar_ia(historico):
     if not token:
         return "Erro: Token HF_TOKEN não configurado."
 
-    API_URL = "https://api-inference.huggingface.co/v1/chat/completions"
+    API_URL = "https://router.huggingface.co/v1/chat/completions"
 
     payload = {
         "model": "meta-llama/Meta-Llama-3-8B-Instruct",
         "messages": historico,
-        "max_tokens": 800,
-        "temperature": 0.7
+        "max_tokens": 500,
+        "temperature": 0.7,
+        "stream": False
     }
 
     headers = {
@@ -137,8 +138,10 @@ def perguntar_ia(historico):
     try:
         r = requests.post(API_URL, headers=headers, json=payload)
 
-        # 👇 DEBUG
-        return f"STATUS: {r.status_code} | RESPOSTA: {r.text}"
+        if r.status_code == 200:
+            return r.json()["choices"][0]["message"]["content"]
+        else:
+            return f"Erro API {r.status_code}: {r.text}"
 
     except Exception as e:
         return f"Erro interno: {str(e)}"
